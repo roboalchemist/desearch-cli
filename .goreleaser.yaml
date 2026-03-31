@@ -31,3 +31,19 @@ snapshot:
 
 # Release configuration
 # (empty for now - real releases use git tags)
+
+# Homebrew taps
+brews:
+  - tap:
+      owner: roboalchemist
+      name: homebrew-private
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    url: "https://gitea.roboalch.com/roboalchemist/desearch-cli"
+    commit_author:
+      name: github-actions
+      email: noreply@roboalch.com
+    commit_msg: "Bump desearch-cli to {{ .Version }}"
+    folder: Formula
+    name: desearch-cli
+    install: |
+      bin.install "desearch"
