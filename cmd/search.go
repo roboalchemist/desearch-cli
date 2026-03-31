@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
@@ -21,6 +22,8 @@ var (
 	flagCount       int
 	flagSystemMsg   string
 	flagNoAI        bool
+	flagPlaintext   bool
+	flagDryRun      bool
 )
 
 func getAPIKey() string {
@@ -68,13 +71,24 @@ func buildSearchRequest(query string) *api.SearchRequest {
 func runSearch(cmd *cobra.Command, args []string) error {
 	query := args[0]
 
+	req := buildSearchRequest(query)
+
+	// Dry-run: print the request as JSON and return without calling the API
+	if flagDryRun {
+		data, err := json.MarshalIndent(req, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal request: %w", err)
+		}
+		fmt.Print(string(data))
+		return nil
+	}
+
 	apiKeyVal := getAPIKey()
 	if apiKeyVal == "" {
 		return fmt.Errorf("no API key found")
 	}
 
 	client := api.NewClient(apiKeyVal)
-	req := buildSearchRequest(query)
 
 	if flagStreaming {
 		return runSearchStream(cmd, client, req)
@@ -90,8 +104,9 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	}
 
 	formatter := output.NewFormatter(output.OutputFlags{
-		JSON: jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
-		NoAI: flagNoAI,
+		JSON:      jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
+		NoAI:      flagNoAI,
+		Plaintext: flagPlaintext,
 	})
 	fmt.Print(formatter.Format(resp))
 	return nil
@@ -131,8 +146,9 @@ returned as a complete response with AI summarization.`,
 	Example: `  desearch "golang best practices"
   desearch "rust vs go" --tool web --count 20
   desearch "AI news" --date-filter PAST_2_DAYS --streaming`,
-	Args:    cobra.ExactArgs(1),
-	RunE:    runSearch,
+	Args:       cobra.ExactArgs(1),
+	RunE:       runSearch,
+	SuggestFor: []string{"serch", "srch", "seach", "searc"},
 }
 
 func init() {
@@ -145,6 +161,12 @@ func init() {
 	searchCmd.Flags().IntVar(&flagCount, "count", 0, "Number of results per source (10-200)")
 	searchCmd.Flags().StringVar(&flagSystemMsg, "system-message", "", "System message to influence AI behavior")
 	searchCmd.Flags().BoolVar(&flagNoAI, "no-ai", false, "Skip AI completion/summary")
+	searchCmd.Flags().BoolVarP(&flagPlaintext, "plaintext", "p", false, "Output as tab-separated values (title\\turl\\tsnippet)")
+	searchCmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Build request and print as JSON without calling the API")
+
+	searchCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		cmd.Parent().HelpFunc()(cmd, args)
+	})
 
 	rootCmd.AddCommand(searchCmd)
 }

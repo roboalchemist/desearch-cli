@@ -83,6 +83,9 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("search stream failed: %w", err)
 	}
 
+	// When --json flag is set, accumulate completion and output at end
+	var completionBuilder strings.Builder
+
 	// Stream completion text chunks as they arrive
 	for {
 		select {
@@ -95,9 +98,18 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		chunk, err := reader.ReadBytes('\n')
 		if len(chunk) > 0 {
 			if completionJSON {
-				// Output raw JSON
-				fmt.Print(string(chunk))
-				os.Stdout.Sync()
+				// Accumulate completion text from JSON chunks
+				var partial map[string]interface{}
+				if err := json.Unmarshal(chunk, &partial); err == nil {
+					if completion, ok := partial["completion"].(string); ok && completion != "" {
+						completionBuilder.WriteString(completion)
+					}
+					if text, ok := partial["text"].(string); ok && text != "" {
+						if _, hasCompletion := partial["completion"]; !hasCompletion {
+							completionBuilder.WriteString(text)
+						}
+					}
+				}
 			} else {
 				// Try to parse as a partial response to extract completion chunks
 				// The stream may send JSON objects with completion text
@@ -145,7 +157,20 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print final newline when done
-	fmt.Println()
+	if completionJSON {
+		// Output structured JSON at the end
+		output := map[string]string{
+			"query":      query,
+			"completion": completionBuilder.String(),
+		}
+		data, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		fmt.Println(string(data))
+	} else {
+		fmt.Println()
+	}
 
 	return nil
 }

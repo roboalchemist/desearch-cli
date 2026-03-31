@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -26,6 +27,16 @@ var showCmd = &cobra.Command{
 		cfg, err := auth.LoadConfig()
 		if err != nil {
 			return fmt.Errorf("loading config: %w", err)
+		}
+
+		if jsonOut {
+			// Output full config as JSON
+			data, err := json.MarshalIndent(cfg, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal config as JSON: %w", err)
+			}
+			fmt.Println(string(data))
+			return nil
 		}
 
 		apiKeyDisplay := ""
