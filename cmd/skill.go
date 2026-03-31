@@ -10,8 +10,9 @@ import (
 )
 
 var skillPrintCmd = &cobra.Command{
-	Use:   "print",
-	Short: "Print SKILL.md to stdout",
+	Use:     "print",
+	Short:   "Print SKILL.md to stdout",
+	Example: `  desearch skill print`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println(skill.SKILLMD)
 		return nil
@@ -19,8 +20,9 @@ var skillPrintCmd = &cobra.Command{
 }
 
 var skillAddCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Install skill to ~/.claude/skills/",
+	Use:     "add",
+	Short:   "Install skill to ~/.claude/skills/",
+	Example: `  desearch skill add`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, err := os.UserHomeDir()
 		if err != nil {

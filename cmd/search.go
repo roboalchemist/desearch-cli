@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
 	"github.com/roboalchemist/desearch-cli/pkg/auth"
@@ -97,6 +98,9 @@ func runSearch(cmd *cobra.Command, args []string) error {
 }
 
 func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequest) error {
+	if flagVerbose {
+		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
+	}
 	ctx := context.Background()
 	resp, err := client.Search(ctx, req)
 	if err != nil {
