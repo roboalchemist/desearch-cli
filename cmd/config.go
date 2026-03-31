@@ -86,9 +86,10 @@ var clearCmd = &cobra.Command{
 }
 
 var (
-	flagAPIKey          string
+	flagAPIKey           string
 	flagDefaultTools     []string
 	flagDefaultDateFilter string
+	flagForce            bool
 )
 
 func init() {
@@ -99,6 +100,7 @@ func init() {
 	configCmd.Flags().StringVar(&flagAPIKey, "api-key", "", "Set API key")
 	configCmd.Flags().StringSliceVar(&flagDefaultTools, "default-tool", nil, "Set default sources (can be specified multiple times)")
 	configCmd.Flags().StringVar(&flagDefaultDateFilter, "default-date-filter", "", "Set date filter (e.g., PAST_24_HOURS, PAST_WEEK, PAST_MONTH)")
+	clearCmd.Flags().BoolVarP(&flagForce, "force", "f", false, "Force clear without confirmation")
 
 	// Wire --api-key, --default-tool, --default-date-filter to run the set subcommand implicitly
 	configCmd.RunE = func(cmd *cobra.Command, args []string) error {
