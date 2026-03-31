@@ -121,20 +121,18 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 }
 
 var searchCmd = &cobra.Command{
-	Use:   "search [query]",
-	Short: "Search using Desearch AI",
-	Long: `Search the web using Desearch AI's contextual search engine.
+	Use:     "search [query]",
+	Short:   "Search using Desearch AI",
+	Long:    `Search the web using Desearch AI's contextual search engine.
 
 Supports multiple sources including web, hackernews, reddit, wikipedia,
 youtube, twitter, and arxiv. Results can be streamed in real-time or
-returned as a complete response with AI summarization.
-
-Examples:
-  desearch "golang best practices"
+returned as a complete response with AI summarization.`,
+	Example: `  desearch "golang best practices"
   desearch "rust vs go" --tool web --count 20
   desearch "AI news" --date-filter PAST_2_DAYS --streaming`,
-	Args: cobra.ExactArgs(1),
-	RunE: runSearch,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runSearch,
 }
 
 func init() {

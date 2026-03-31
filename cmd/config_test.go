@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/roboalchemist/desearch-cli/pkg/auth"
 	"github.com/spf13/viper"
 )
 
@@ -34,33 +35,31 @@ func TestConfigPath(t *testing.T) {
 	t.Run("uses XDG_CONFIG_HOME when set", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		os.Setenv("XDG_CONFIG_HOME", tmpDir)
-		initConfigTest()
 
-		path, err := configPath()
+		path, err := auth.ConfigPath()
 		if err != nil {
-			t.Fatalf("configPath() error = %v", err)
+			t.Fatalf("auth.ConfigPath() error = %v", err)
 		}
 		expected := filepath.Join(tmpDir, "desearch-cli", "config.toml")
 		if path != expected {
-			t.Errorf("configPath() = %q, want %q", path, expected)
+			t.Errorf("auth.ConfigPath() = %q, want %q", path, expected)
 		}
 	})
 
 	t.Run("falls back to ~/.config when XDG_CONFIG_HOME not set", func(t *testing.T) {
 		os.Unsetenv("XDG_CONFIG_HOME")
-		initConfigTest()
 
 		home, err := os.UserHomeDir()
 		if err != nil {
 			t.Fatalf("UserHomeDir() error = %v", err)
 		}
-		path, err := configPath()
+		path, err := auth.ConfigPath()
 		if err != nil {
-			t.Fatalf("configPath() error = %v", err)
+			t.Fatalf("auth.ConfigPath() error = %v", err)
 		}
 		expected := filepath.Join(home, ".config", "desearch-cli", "config.toml")
 		if path != expected {
-			t.Errorf("configPath() = %q, want %q", path, expected)
+			t.Errorf("auth.ConfigPath() = %q, want %q", path, expected)
 		}
 	})
 }

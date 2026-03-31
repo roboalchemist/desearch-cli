@@ -16,8 +16,8 @@ type Config struct {
 	DefaultCount      int      `toml:"default_count"`
 }
 
-// configPath returns the XDG-compliant config file path.
-func configPath() (string, error) {
+// ConfigPath returns the XDG-compliant config file path.
+func ConfigPath() (string, error) {
 	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
 	if xdgConfigHome == "" {
 		home, err := os.UserHomeDir()
@@ -32,7 +32,7 @@ func configPath() (string, error) {
 // LoadConfig reads the configuration from the XDG config path.
 // If the config file does not exist, it returns an empty Config and no error.
 func LoadConfig() (*Config, error) {
-	path, err := configPath()
+	path, err := ConfigPath()
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func LoadConfig() (*Config, error) {
 // SaveConfig writes the configuration to the XDG config path.
 // It creates the directory structure if it does not exist and sets permissions to 0600.
 func SaveConfig(c *Config) error {
-	path, err := configPath()
+	path, err := ConfigPath()
 	if err != nil {
 		return err
 	}

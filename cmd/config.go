@@ -10,19 +10,22 @@ import (
 )
 
 var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Manage API key and default settings",
-	Long:  `Manage the CLI configuration including API key and default search settings.`,
+	Use:     "config",
+	Short:   "Manage API key and default settings",
+	Long:    `Manage the CLI configuration including API key and default search settings.`,
+	Example: `  desearch config --api-key sk-xxx  # Set API key
+  desearch config --show              # Show current config
+  desearch config --clear             # Clear all config`,
 }
 
 var showCmd = &cobra.Command{
-	Use:   "show",
-	Short: "Display current configuration",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:     "show",
+	Short:   "Display current configuration",
+	Example: `  desearch config --show`,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := auth.LoadConfig()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("loading config: %w", err)
 		}
 
 		apiKeyDisplay := ""
@@ -38,50 +41,37 @@ var showCmd = &cobra.Command{
 		fmt.Printf("Default Tools:         %v\n", cfg.DefaultTools)
 		fmt.Printf("Default Date Filter:   %s\n", cfg.DefaultDateFilter)
 		fmt.Printf("Default Count:         %d\n", cfg.DefaultCount)
+		return nil
 	},
 }
 
 var clearCmd = &cobra.Command{
-	Use:   "clear",
-	Short: "Reset configuration to defaults",
-	Run: func(cmd *cobra.Command, args []string) {
-		path, err := auth.LoadConfig()
-		_ = path // not used; just checking if config exists
+	Use:     "clear",
+	Short:   "Reset configuration to defaults",
+	Example: `  desearch config --clear`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := auth.LoadConfig()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("loading config: %w", err)
 		}
 
-		xdgPath, err := configPath()
+		xdgPath, err := auth.ConfigPath()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting config path: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("getting config path: %w", err)
 		}
 
 		if _, err := os.Stat(xdgPath); os.IsNotExist(err) {
 			fmt.Println("No config file to clear.")
-			return
+			return nil
 		}
 
 		if err := os.Remove(xdgPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Error removing config file: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("removing config file: %w", err)
 		}
 
 		fmt.Println("Configuration cleared.")
+		return nil
 	},
-}
-
-func configPath() (string, error) {
-	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
-	if xdgConfigHome == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("could not determine home directory: %w", err)
-		}
-		xdgConfigHome = home + "/.config"
-	}
-	return xdgConfigHome + "/desearch-cli/config.toml", nil
 }
 
 var (
@@ -100,11 +90,11 @@ func init() {
 	configCmd.Flags().StringVar(&flagDefaultDateFilter, "default-date-filter", "", "Set date filter (e.g., PAST_24_HOURS, PAST_WEEK, PAST_MONTH)")
 
 	// Wire --api-key, --default-tool, --default-date-filter to run the set subcommand implicitly
-	configCmd.Run = func(cmd *cobra.Command, args []string) {
+	configCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		// If no flags were provided, show help
 		if flagAPIKey == "" && flagDefaultDateFilter == "" && len(flagDefaultTools) == 0 {
 			cmd.Help()
-			return
+			return nil
 		}
 
 		cfg := &auth.Config{}
@@ -112,8 +102,7 @@ func init() {
 		// Load existing config to preserve values not being set
 		existing, err := auth.LoadConfig()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("loading config: %w", err)
 		}
 
 		// Start with existing values
@@ -122,8 +111,7 @@ func init() {
 		// Apply flag overrides
 		if flagAPIKey != "" {
 			if strings.TrimSpace(flagAPIKey) == "" {
-				fmt.Fprintln(os.Stderr, "Error: API key cannot be empty")
-				os.Exit(1)
+				return fmt.Errorf("API key cannot be empty")
 			}
 			cfg.APIKey = flagAPIKey
 		}
@@ -135,10 +123,10 @@ func init() {
 		}
 
 		if err := auth.SaveConfig(cfg); err != nil {
-			fmt.Fprintf(os.Stderr, "Error saving config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("saving config: %w", err)
 		}
 
 		fmt.Println("Configuration saved.")
+		return nil
 	}
 }

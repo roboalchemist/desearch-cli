@@ -16,6 +16,7 @@ import (
 
 var (
 	completionSystemMessage string
+	completionJSON           bool
 )
 
 var completionCmd = &cobra.Command{
@@ -36,6 +37,7 @@ Example:
 func init() {
 	rootCmd.AddCommand(completionCmd)
 	completionCmd.Flags().StringVar(&completionSystemMessage, "system-message", "", "Optional system message to override the default")
+	completionCmd.Flags().BoolVar(&completionJSON, "json", false, "Output raw JSON response")
 }
 
 func runCompletion(cmd *cobra.Command, args []string) error {
@@ -92,32 +94,38 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 
 		chunk, err := reader.ReadBytes('\n')
 		if len(chunk) > 0 {
-			// Try to parse as a partial response to extract completion chunks
-			// The stream may send JSON objects with completion text
-			var partial map[string]interface{}
-			if err := json.Unmarshal(chunk, &partial); err == nil {
-				// Look for completion field
-				if completion, ok := partial["completion"].(string); ok && completion != "" {
-					// Print without extra newline, flush immediately
-					fmt.Print(completion)
-					os.Stdout.Sync()
-				}
-				// Also check for text field which may contain completion chunks
-				if text, ok := partial["text"].(string); ok && text != "" {
-					// Only print if completion is not set or empty
-					if _, hasCompletion := partial["completion"]; !hasCompletion {
-						fmt.Print(text)
+			if completionJSON {
+				// Output raw JSON
+				fmt.Print(string(chunk))
+				os.Stdout.Sync()
+			} else {
+				// Try to parse as a partial response to extract completion chunks
+				// The stream may send JSON objects with completion text
+				var partial map[string]interface{}
+				if err := json.Unmarshal(chunk, &partial); err == nil {
+					// Look for completion field
+					if completion, ok := partial["completion"].(string); ok && completion != "" {
+						// Print without extra newline, flush immediately
+						fmt.Print(completion)
 						os.Stdout.Sync()
 					}
-				}
-			} else {
-				// Not JSON - try to print raw chunk if it looks like text
-				trimmed := strings.TrimSpace(string(chunk))
-				if trimmed != "" {
-					// Check if it might be plain text completion
-					if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
-						fmt.Print(trimmed)
-						os.Stdout.Sync()
+					// Also check for text field which may contain completion chunks
+					if text, ok := partial["text"].(string); ok && text != "" {
+						// Only print if completion is not set or empty
+						if _, hasCompletion := partial["completion"]; !hasCompletion {
+							fmt.Print(text)
+							os.Stdout.Sync()
+						}
+					}
+				} else {
+					// Not JSON - try to print raw chunk if it looks like text
+					trimmed := strings.TrimSpace(string(chunk))
+					if trimmed != "" {
+						// Check if it might be plain text completion
+						if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+							fmt.Print(trimmed)
+							os.Stdout.Sync()
+						}
 					}
 				}
 			}
