@@ -16,7 +16,7 @@ import (
 
 var (
 	completionSystemMessage string
-	completionJSON           bool
+	completionJSON          bool
 )
 
 var completionCmd = &cobra.Command{
@@ -69,8 +69,8 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 	resultType := "LINKS_WITH_FINAL_SUMMARY"
 
 	req := &api.SearchRequest{
-		Prompt:      query,
-		Streaming:   &streaming,
+		Prompt:     query,
+		Streaming:  &streaming,
 		ResultType: &resultType,
 	}
 

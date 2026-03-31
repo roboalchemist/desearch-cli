@@ -31,14 +31,14 @@ func TestJSONFormatter_Format(t *testing.T) {
 				},
 				Tweets: []api.TweetResult{
 					{
-						ID: "123",
-						Text: "This is a tweet",
-						URL: "https://x.com/user/status/123",
-						User: api.TweetUser{Username: "testuser", Name: "Test User"},
-						LikeCount:    10,
-						RetweetCount: 5,
-						ReplyCount:   2,
-						QuoteCount:   1,
+						ID:            "123",
+						Text:          "This is a tweet",
+						URL:           "https://x.com/user/status/123",
+						User:          api.TweetUser{Username: "testuser", Name: "Test User"},
+						LikeCount:     10,
+						RetweetCount:  5,
+						ReplyCount:    2,
+						QuoteCount:    1,
 						BookmarkCount: 3,
 					},
 				},
@@ -79,12 +79,12 @@ func TestJSONFormatter_Format(t *testing.T) {
 
 func TestHumanFormatter_Format(t *testing.T) {
 	tests := []struct {
-		name       string
-		response   *api.SearchResponse
-		noAI       bool
-		tool       string
-		checkFunc  func(string) bool
-		wantEmpty  bool
+		name      string
+		response  *api.SearchResponse
+		noAI      bool
+		tool      string
+		checkFunc func(string) bool
+		wantEmpty bool
 	}{
 		{
 			name: "full response with all sections",
@@ -103,10 +103,10 @@ func TestHumanFormatter_Format(t *testing.T) {
 				},
 				Tweets: []api.TweetResult{
 					{
-						ID: "123",
-						Text: "This is a tweet",
-						URL: "https://x.com/user/status/123",
-						User: api.TweetUser{Username: "testuser", Name: "Test User"},
+						ID:           "123",
+						Text:         "This is a tweet",
+						URL:          "https://x.com/user/status/123",
+						User:         api.TweetUser{Username: "testuser", Name: "Test User"},
 						LikeCount:    10,
 						RetweetCount: 5,
 						ReplyCount:   2,
@@ -205,9 +205,9 @@ func TestHumanFormatter_Format(t *testing.T) {
 			response: &api.SearchResponse{
 				Tweets: []api.TweetResult{
 					{
-						ID: "123",
-						Text: "Test tweet",
-						User: api.TweetUser{Username: "testuser", Name: "Test User"},
+						ID:            "123",
+						Text:          "Test tweet",
+						User:          api.TweetUser{Username: "testuser", Name: "Test User"},
 						LikeCount:     100,
 						RetweetCount:  50,
 						ReplyCount:    25,
@@ -295,12 +295,12 @@ func TestOutputFlags_Defaults(t *testing.T) {
 
 func TestPlaintextFormatter_Format(t *testing.T) {
 	tests := []struct {
-		name       string
-		response   *api.SearchResponse
-		noAI       bool
-		tool       string
-		checkFunc  func(string) bool
-		wantEmpty  bool
+		name      string
+		response  *api.SearchResponse
+		noAI      bool
+		tool      string
+		checkFunc func(string) bool
+		wantEmpty bool
 	}{
 		{
 			name: "full response with all sections",
@@ -319,10 +319,10 @@ func TestPlaintextFormatter_Format(t *testing.T) {
 				},
 				Tweets: []api.TweetResult{
 					{
-						ID: "123",
-						Text: "This is a tweet",
-						URL: "https://x.com/user/status/123",
-						User: api.TweetUser{Username: "testuser", Name: "Test User"},
+						ID:           "123",
+						Text:         "This is a tweet",
+						URL:          "https://x.com/user/status/123",
+						User:         api.TweetUser{Username: "testuser", Name: "Test User"},
 						LikeCount:    10,
 						RetweetCount: 5,
 						ReplyCount:   2,
@@ -381,9 +381,9 @@ func TestPlaintextFormatter_Format(t *testing.T) {
 			},
 		},
 		{
-			name:       "empty response",
-			response:   &api.SearchResponse{},
-			wantEmpty:  true,
+			name:      "empty response",
+			response:  &api.SearchResponse{},
+			wantEmpty: true,
 		},
 		{
 			name: "web results format",
@@ -438,7 +438,7 @@ func TestPlaintextFormatter_Format(t *testing.T) {
 			response: &api.SearchResponse{
 				Tweets: []api.TweetResult{
 					{
-						ID: "123",
+						ID:   "123",
 						Text: "Tweet text",
 						User: api.TweetUser{Username: "tweetuser", Name: "Tweet User"},
 					},
@@ -496,40 +496,40 @@ func TestPlaintextFormatter_Format(t *testing.T) {
 
 func TestEvaluateJQ(t *testing.T) {
 	tests := []struct {
-		name       string
-		data       string
-		expression string
-		wantErr    bool
+		name        string
+		data        string
+		expression  string
+		wantErr     bool
 		wantContain string
 	}{
 		{
-			name:       "empty expression returns original",
-			data:       `{"key": "value"}`,
-			expression: "",
+			name:        "empty expression returns original",
+			data:        `{"key": "value"}`,
+			expression:  "",
 			wantContain: "key",
 		},
 		{
-			name:       "simple key access",
-			data:       `{"key": "value"}`,
-			expression: ".key",
+			name:        "simple key access",
+			data:        `{"key": "value"}`,
+			expression:  ".key",
 			wantContain: "value",
 		},
 		{
-			name:       "nested key access",
-			data:       `{"outer": {"inner": "nested value"}}`,
-			expression: ".outer.inner",
+			name:        "nested key access",
+			data:        `{"outer": {"inner": "nested value"}}`,
+			expression:  ".outer.inner",
 			wantContain: "nested value",
 		},
 		{
-			name:       "array access",
-			data:       `{"items": ["a", "b", "c"]}`,
-			expression: ".items[]",
+			name:        "array access",
+			data:        `{"items": ["a", "b", "c"]}`,
+			expression:  ".items[]",
 			wantContain: `"a"`,
 		},
 		{
-			name:       "nonexistent key returns null",
-			data:       `{"key": "value"}`,
-			expression: ".nonexistent",
+			name:        "nonexistent key returns null",
+			data:        `{"key": "value"}`,
+			expression:  ".nonexistent",
 			wantContain: "null",
 		},
 		{

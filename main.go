@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/roboalchemist/desearch-cli/cmd"
 )
 
@@ -9,6 +11,6 @@ var version = "dev"
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		panic(err)
+		os.Exit(1)
 	}
 }

@@ -89,9 +89,9 @@ func TestCompletionRequest_Build(t *testing.T) {
 	resultType := "LINKS_WITH_FINAL_SUMMARY"
 
 	req := &api.SearchRequest{
-		Prompt:      query,
-		Streaming:   &streaming,
-		ResultType:  &resultType,
+		Prompt:     query,
+		Streaming:  &streaming,
+		ResultType: &resultType,
 	}
 
 	if systemMsg != "" {

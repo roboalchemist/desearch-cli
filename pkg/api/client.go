@@ -16,9 +16,9 @@ const BaseURL = "https://api.desearch.ai"
 
 // Client is a Desearch API client.
 type Client struct {
-	APIKey    string
+	APIKey     string
 	HTTPClient *http.Client
-	BaseURL   string
+	BaseURL    string
 }
 
 // NewClient creates a new Desearch API client.
@@ -34,7 +34,7 @@ func NewClient(apiKey string) *Client {
 
 // SearchRequest represents a search request to the Desearch API.
 type SearchRequest struct {
-	Prompt                string   `json:"prompt"`
+	Prompt               string   `json:"prompt"`
 	Tools                []string `json:"tools,omitempty"`
 	StartDate            *string  `json:"start_date,omitempty"`
 	EndDate              *string  `json:"end_date,omitempty"`
@@ -48,16 +48,16 @@ type SearchRequest struct {
 
 // SearchResponse represents a search response from the Desearch API.
 type SearchResponse struct {
-	Search           []WebResult         `json:"search,omitempty"`
-	HackerNewsSearch []HackerNewsResult  `json:"hacker_news_search,omitempty"`
-	RedditSearch     []RedditResult      `json:"reddit_search,omitempty"`
-	YoutubeSearch    []YoutubeResult     `json:"youtube_search,omitempty"`
-	Tweets           []TweetResult       `json:"tweets,omitempty"`
-	WikipediaSearch  []WikipediaResult   `json:"wikipedia_search,omitempty"`
-	ArxivSearch      []ArxivResult       `json:"arxiv_search,omitempty"`
-	Text             string              `json:"text,omitempty"`
-	MinerLinkScores  map[string]string   `json:"miner_link_scores,omitempty"`
-	Completion       string              `json:"completion,omitempty"`
+	Search           []WebResult        `json:"search,omitempty"`
+	HackerNewsSearch []HackerNewsResult `json:"hacker_news_search,omitempty"`
+	RedditSearch     []RedditResult     `json:"reddit_search,omitempty"`
+	YoutubeSearch    []YoutubeResult    `json:"youtube_search,omitempty"`
+	Tweets           []TweetResult      `json:"tweets,omitempty"`
+	WikipediaSearch  []WikipediaResult  `json:"wikipedia_search,omitempty"`
+	ArxivSearch      []ArxivResult      `json:"arxiv_search,omitempty"`
+	Text             string             `json:"text,omitempty"`
+	MinerLinkScores  map[string]string  `json:"miner_link_scores,omitempty"`
+	Completion       string             `json:"completion,omitempty"`
 }
 
 // WebResult represents a web search result.
@@ -100,24 +100,24 @@ type TweetUser struct {
 
 // TweetResult represents a tweet search result.
 type TweetResult struct {
-	ID              string          `json:"id"`
-	Text            string          `json:"text"`
-	URL             string          `json:"url,omitempty"`
-	User            TweetUser       `json:"user"`
-	LikeCount       int             `json:"like_count"`
-	RetweetCount    int             `json:"retweet_count"`
-	ReplyCount      int             `json:"reply_count"`
-	QuoteCount      int             `json:"quote_count"`
-	BookmarkCount   int             `json:"bookmark_count"`
-	CreatedAt       string          `json:"created_at,omitempty"`
-	Lang            string          `json:"lang,omitempty"`
-	IsRetweet       bool            `json:"is_retweet,omitempty"`
-	IsQuoteTweet    bool            `json:"is_quote_tweet,omitempty"`
-	ConversationID  string          `json:"conversation_id,omitempty"`
+	ID               string         `json:"id"`
+	Text             string         `json:"text"`
+	URL              string         `json:"url,omitempty"`
+	User             TweetUser      `json:"user"`
+	LikeCount        int            `json:"like_count"`
+	RetweetCount     int            `json:"retweet_count"`
+	ReplyCount       int            `json:"reply_count"`
+	QuoteCount       int            `json:"quote_count"`
+	BookmarkCount    int            `json:"bookmark_count"`
+	CreatedAt        string         `json:"created_at,omitempty"`
+	Lang             string         `json:"lang,omitempty"`
+	IsRetweet        bool           `json:"is_retweet,omitempty"`
+	IsQuoteTweet     bool           `json:"is_quote_tweet,omitempty"`
+	ConversationID   string         `json:"conversation_id,omitempty"`
 	DisplayTextRange []int          `json:"display_text_range,omitempty"`
-	Entities        *TweetEntities  `json:"entities,omitempty"`
+	Entities         *TweetEntities `json:"entities,omitempty"`
 	ExtendedEntities *TweetEntities `json:"extended_entities,omitempty"`
-	Media           []TweetMedia    `json:"media,omitempty"`
+	Media            []TweetMedia   `json:"media,omitempty"`
 }
 
 // TweetEntities represents tweet entities (hashtags, mentions, etc.).
@@ -152,26 +152,26 @@ type TweetURL struct {
 
 // TweetMention represents a user mention in a tweet.
 type TweetMention struct {
-	Indices   [2]int `json:"indices"`
-	IDStr     string `json:"id_str"`
-	Name      string `json:"name"`
+	Indices    [2]int `json:"indices"`
+	IDStr      string `json:"id_str"`
+	Name       string `json:"name"`
 	ScreenName string `json:"screen_name"`
 }
 
 // TweetMedia represents media attached to a tweet.
 type TweetMedia struct {
-	ID              string             `json:"id_str"`
-	MediaURL       string             `json:"media_url"`
-	Type           string             `json:"type"`
-	DisplayURL     string             `json:"display_url"`
-	ExpandedURL    string             `json:"expanded_url"`
-	URL            string             `json:"url"`
-	Indices        [2]int            `json:"indices"`
-	Sizes          TweetMediaSizes    `json:"sizes"`
-	OriginalInfo   TweetOriginalInfo `json:"original_info"`
-	Features       TweetMediaFeatures `json:"features"`
+	ID                   string                 `json:"id_str"`
+	MediaURL             string                 `json:"media_url"`
+	Type                 string                 `json:"type"`
+	DisplayURL           string                 `json:"display_url"`
+	ExpandedURL          string                 `json:"expanded_url"`
+	URL                  string                 `json:"url"`
+	Indices              [2]int                 `json:"indices"`
+	Sizes                TweetMediaSizes        `json:"sizes"`
+	OriginalInfo         TweetOriginalInfo      `json:"original_info"`
+	Features             TweetMediaFeatures     `json:"features"`
 	ExtMediaAvailability TweetMediaAvailability `json:"ext_media_availability"`
-	MediaKey       string             `json:"media_key,omitempty"`
+	MediaKey             string                 `json:"media_key,omitempty"`
 }
 
 // TweetMediaSizes represents available sizes for tweet media.
@@ -191,9 +191,9 @@ type TweetMediaSize struct {
 
 // TweetOriginalInfo represents original dimensions of tweet media.
 type TweetOriginalInfo struct {
-	Width      int              `json:"width"`
-	Height     int              `json:"height"`
-	FocusRect  []TweetFocusRect `json:"focus_rects,omitempty"`
+	Width     int              `json:"width"`
+	Height    int              `json:"height"`
+	FocusRect []TweetFocusRect `json:"focus_rects,omitempty"`
 }
 
 // TweetFocusRect represents a focus rectangle for crop.

@@ -78,9 +78,13 @@ func SaveConfig(c *Config) error {
 	return nil
 }
 
-// GetAPIKey returns the API key from the config file.
-// Returns an empty string if the config cannot be loaded or the key is not set.
+// GetAPIKey returns the API key from the environment or config file.
+// Environment variable DESEARCH_API_KEY takes precedence over config file.
+// Returns an empty string if the key cannot be loaded.
 func GetAPIKey() string {
+	if key := os.Getenv("DESEARCH_API_KEY"); key != "" {
+		return key
+	}
 	cfg, err := LoadConfig()
 	if err != nil {
 		return ""

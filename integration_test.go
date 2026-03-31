@@ -161,11 +161,11 @@ func TestIntegration_ExitCodes(t *testing.T) {
 	binary := buildBinary(t)
 
 	tests := []struct {
-		name    string
-		args    []string
+		name     string
+		args     []string
 		wantCode int
 	}{
-		{"no args", []string{}, 0},  // shows help, no error
+		{"no args", []string{}, 0}, // shows help, no error
 		{"unknown flag", []string{"search", "--invalid-flag"}, 2},
 		{"unknown command", []string{"nonexistent"}, 2},
 	}

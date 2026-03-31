@@ -11,9 +11,9 @@ import (
 )
 
 var configCmd = &cobra.Command{
-	Use:     "config",
-	Short:   "Manage API key and default settings",
-	Long:    `Manage the CLI configuration including API key and default search settings.`,
+	Use:   "config",
+	Short: "Manage API key and default settings",
+	Long:  `Manage the CLI configuration including API key and default search settings.`,
 	Example: `  desearch config --api-key sk-xxx  # Set API key
   desearch config --show              # Show current config
   desearch config --clear             # Clear all config`,
@@ -86,10 +86,10 @@ var clearCmd = &cobra.Command{
 }
 
 var (
-	flagAPIKey           string
-	flagDefaultTools     []string
+	flagAPIKey            string
+	flagDefaultTools      []string
 	flagDefaultDateFilter string
-	flagForce            bool
+	flagForce             bool
 )
 
 func init() {

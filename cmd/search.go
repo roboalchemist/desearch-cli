@@ -13,17 +13,17 @@ import (
 )
 
 var (
-	flagTool        []string
-	flagDateFilter  string
-	flagStartDate   string
-	flagEndDate     string
-	flagStreaming   bool
-	flagResultType  string
-	flagCount       int
-	flagSystemMsg   string
-	flagNoAI        bool
-	flagPlaintext   bool
-	flagDryRun      bool
+	flagTool       []string
+	flagDateFilter string
+	flagStartDate  string
+	flagEndDate    string
+	flagStreaming  bool
+	flagResultType string
+	flagCount      int
+	flagSystemMsg  string
+	flagNoAI       bool
+	flagPlaintext  bool
+	flagDryRun     bool
 )
 
 func getAPIKey() string {
@@ -136,9 +136,9 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 }
 
 var searchCmd = &cobra.Command{
-	Use:     "search [query]",
-	Short:   "Search using Desearch AI",
-	Long:    `Search the web using Desearch AI's contextual search engine.
+	Use:   "search [query]",
+	Short: "Search using Desearch AI",
+	Long: `Search the web using Desearch AI's contextual search engine.
 
 Supports multiple sources including web, hackernews, reddit, wikipedia,
 youtube, twitter, and arxiv. Results can be streamed in real-time or

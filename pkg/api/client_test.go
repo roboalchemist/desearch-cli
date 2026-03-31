@@ -30,13 +30,13 @@ func TestSearchRequest_Marshal(t *testing.T) {
 	streaming := true
 	count := 50
 	req := SearchRequest{
-		Prompt:      "Bittensor",
-		Tools:       []string{"web", "hackernews"},
-		DateFilter:  ptrString("PAST_WEEK"),
-		Streaming:   &streaming,
-		ResultType:  ptrString("LINKS_WITH_FINAL_SUMMARY"),
+		Prompt:        "Bittensor",
+		Tools:         []string{"web", "hackernews"},
+		DateFilter:    ptrString("PAST_WEEK"),
+		Streaming:     &streaming,
+		ResultType:    ptrString("LINKS_WITH_FINAL_SUMMARY"),
 		SystemMessage: ptrString("Summarize in pros and cons"),
-		Count:       &count,
+		Count:         &count,
 	}
 
 	data, err := json.Marshal(req)
@@ -77,7 +77,7 @@ func TestSearchResponse_RoundTrip(t *testing.T) {
 		Tweets: []TweetResult{
 			{
 				ID: "123", Text: "Excited about Bittensor!",
-				User: TweetUser{Username: "testuser", Name: "Test User"},
+				User:      TweetUser{Username: "testuser", Name: "Test User"},
 				LikeCount: 10, RetweetCount: 2,
 			},
 		},

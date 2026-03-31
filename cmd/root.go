@@ -9,12 +9,12 @@ import (
 )
 
 var (
-	cfgFile      string
-	apiKey       string
-	jsonOut      bool
-	versionFlag  bool
-	flagVerbose  bool
-	flagQuiet    bool
+	cfgFile     string
+	apiKey      string
+	jsonOut     bool
+	versionFlag bool
+	flagVerbose bool
+	flagQuiet   bool
 )
 
 // version is set at build time via -ldflags "-X github.com/roboalchemist/desearch-cli/cmd.version=$(git describe --tags)"
@@ -22,11 +22,11 @@ var version = "dev"
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:               "desearch",
-	Short:             "A CLI tool for Desearch AI",
-	SilenceUsage:     true,
-	SilenceErrors:    true,
-	Version:           version,
+	Use:           "desearch",
+	Short:         "A CLI tool for Desearch AI",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	Version:       version,
 	Long: `CLI tool for Desearch AI - a contextual AI search engine that aggregates results across multiple sources.
 
 ENVIRONMENT
