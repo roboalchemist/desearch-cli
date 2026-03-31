@@ -70,6 +70,10 @@ func buildSearchRequest(query string) *api.SearchRequest {
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
+	if flagVerbose && flagTool != nil {
+		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
+	}
+
 	query := args[0]
 
 	req := buildSearchRequest(query)
