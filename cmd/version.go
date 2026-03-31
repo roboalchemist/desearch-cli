@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Version is set at build time via -ldflags "-X github.com/roboalchemist/desearch-cli/cmd.Version=..."
-var Version = "dev"
+// Version is set at build time via -ldflags "-X main.version=$(git describe --tags)"
+var version = "dev"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of desearch",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Version)
+		fmt.Println("desearch-cli version", version)
 	},
 }
 
