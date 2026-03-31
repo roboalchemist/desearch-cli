@@ -70,7 +70,7 @@ func buildSearchRequest(query string) *api.SearchRequest {
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
-	if flagVerbose && flagTool != nil {
+	if flagVerbose {
 		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
 	}
 
@@ -102,9 +102,6 @@ func runSearch(cmd *cobra.Command, args []string) error {
 }
 
 func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequest) error {
-	if flagVerbose {
-		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
-	}
 	ctx := context.Background()
 	resp, err := client.Search(ctx, req)
 	if err != nil {
@@ -122,7 +119,6 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 
 func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequest) error {
 	if flagVerbose {
-		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
 		fmt.Fprintf(os.Stderr, "Streaming results...\n")
 	}
 	ctx := context.Background()
