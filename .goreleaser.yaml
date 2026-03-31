@@ -1,0 +1,33 @@
+# .goreleaser.yaml for desearch-cli
+version: 2
+
+# Build configuration
+builds:
+  - id: desearch-cli
+    main: .
+    binary: desearch
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - arm64
+      - amd64
+    ldflags:
+      - -X github.com/roboalchemist/desearch-cli/cmd.version={{.Version}}
+
+# Archive configuration
+archives:
+  - id: default
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# Snapshot configuration
+snapshot:
+  name_template: "{{ .Tag }}-SNAPSHOT-{{ .ShortCommit }}"
+
+# Release configuration
+# (empty for now - real releases use git tags)
