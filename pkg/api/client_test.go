@@ -15,14 +15,14 @@ func TestNewClient(t *testing.T) {
 	if client == nil {
 		t.Fatal("NewClient returned nil")
 	}
-	if client.baseURL != BaseURL {
-		t.Errorf("expected baseURL %q, got %q", BaseURL, client.baseURL)
+	if client.BaseURL != BaseURL {
+		t.Errorf("expected BaseURL %q, got %q", BaseURL, client.BaseURL)
 	}
-	if client.apiKey != "test-api-key" {
-		t.Errorf("expected apiKey %q, got %q", "test-api-key", client.apiKey)
+	if client.APIKey != "test-api-key" {
+		t.Errorf("expected APIKey %q, got %q", "test-api-key", client.APIKey)
 	}
-	if client.httpClient == nil {
-		t.Error("expected non-nil httpClient")
+	if client.HTTPClient == nil {
+		t.Error("expected non-nil HTTPClient")
 	}
 }
 
@@ -61,27 +61,35 @@ func TestSearchRequest_Marshal(t *testing.T) {
 }
 
 func TestSearchResponse_RoundTrip(t *testing.T) {
-	completion := "Bittensor is a decentralized AI network."
-	text := "Some additional text."
 	resp := SearchResponse{
-		HackerNewsSearch: []map[string]interface{}{
-			{"title": "Bittensor on HN", "link": "https://news.ycombinator.com/item?id=1"},
+		HackerNewsSearch: []HackerNewsResult{
+			{Title: "Bittensor on HN", Link: "https://news.ycombinator.com/item?id=1", Snippet: "Test snippet"},
 		},
-		RedditSearch: []map[string]interface{}{
-			{"title": "Bittensor on Reddit", "link": "https://reddit.com/r/bittensor"},
+		RedditSearch: []RedditResult{
+			{Title: "Bittensor on Reddit", Link: "https://reddit.com/r/bittensor", Snippet: "Test snippet"},
 		},
-		Search: []map[string]interface{}{
-			{"title": "What is Bittensor?", "link": "https://example.com/bittensor"},
+		Search: []WebResult{
+			{Title: "What is Bittensor?", Link: "https://example.com/bittensor", Snippet: "Test snippet"},
 		},
-		YoutubeSearch: []map[string]interface{}{
-			{"title": "Bittensor Video", "link": "https://youtube.com/watch?v=1"},
+		YoutubeSearch: []YoutubeResult{
+			{Title: "Bittensor Video", Link: "https://youtube.com/watch?v=1", Snippet: "Test snippet"},
 		},
-		Tweets: []map[string]interface{}{
-			{"text": "Excited about Bittensor!", "user": map[string]interface{}{"username": "testuser"}},
+		Tweets: []TweetResult{
+			{
+				ID: "123", Text: "Excited about Bittensor!",
+				User: TweetUser{Username: "testuser", Name: "Test User"},
+				LikeCount: 10, RetweetCount: 2,
+			},
 		},
-		Text:            &text,
+		WikipediaSearch: []WikipediaResult{
+			{Title: "Bittensor", Link: "https://en.wikipedia.org/wiki/Bittensor", Snippet: "Test snippet"},
+		},
+		ArxivSearch: []ArxivResult{
+			{Title: "Bittensor Paper", Link: "https://arxiv.org/abs/1234", Snippet: "Test snippet"},
+		},
+		Text:            "Some additional text.",
 		MinerLinkScores: map[string]string{"https://example.com": "HIGH"},
-		Completion:      &completion,
+		Completion:      "Bittensor is a decentralized AI network.",
 	}
 
 	data, err := json.Marshal(resp)
@@ -97,25 +105,22 @@ func TestSearchResponse_RoundTrip(t *testing.T) {
 	if len(decoded.HackerNewsSearch) != 1 {
 		t.Errorf("hacker_news_search length: expected 1, got %d", len(decoded.HackerNewsSearch))
 	}
-	if decoded.Completion == nil || *decoded.Completion != completion {
-		t.Errorf("completion: expected %q, got %v", completion, decoded.Completion)
+	if decoded.Completion != resp.Completion {
+		t.Errorf("completion: expected %q, got %q", resp.Completion, decoded.Completion)
 	}
-	if decoded.Text == nil || *decoded.Text != text {
-		t.Errorf("text: expected %q, got %v", text, decoded.Text)
+	if decoded.Text != resp.Text {
+		t.Errorf("text: expected %q, got %q", resp.Text, decoded.Text)
 	}
 }
 
 func TestSearch_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify request method and path
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
 		if r.URL.Path != "/desearch/ai/search" {
 			t.Errorf("expected path /desearch/ai/search, got %s", r.URL.Path)
 		}
-
-		// Verify headers
 		if r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
 		}
@@ -124,7 +129,6 @@ func TestSearch_Success(t *testing.T) {
 			t.Errorf("expected Authorization header starting with 'Bearer ', got %s", auth)
 		}
 
-		// Verify request body
 		var req SearchRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("failed to decode request body: %v", err)
@@ -133,18 +137,17 @@ func TestSearch_Success(t *testing.T) {
 			t.Errorf("expected prompt 'test query', got %q", req.Prompt)
 		}
 
-		// Send response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(SearchResponse{
-			HackerNewsSearch: []map[string]interface{}{
-				{"title": "Test Result", "link": "https://example.com"},
+			HackerNewsSearch: []HackerNewsResult{
+				{Title: "Test Result", Link: "https://example.com", Snippet: "Test"},
 			},
 		})
 	}))
 	defer server.Close()
 
-	client := &Client{baseURL: server.URL, apiKey: "test-key", httpClient: server.Client()}
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
 	streaming := false
 	resp, err := client.Search(context.Background(), &SearchRequest{
 		Prompt:    "test query",
@@ -166,7 +169,7 @@ func TestSearch_Non200(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := &Client{baseURL: server.URL, apiKey: "bad-key", httpClient: server.Client()}
+	client := &Client{BaseURL: server.URL, APIKey: "bad-key", HTTPClient: server.Client()}
 	_, err := client.Search(context.Background(), &SearchRequest{
 		Prompt: "test",
 		Tools:  []string{"web"},
@@ -193,20 +196,17 @@ func TestSearchStream_Success(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("failed to decode request body: %v", err)
 		}
-
-		// streaming should be true
 		if req.Streaming == nil || !*req.Streaming {
 			t.Error("expected streaming to be true in SearchStream request")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		// Send some SSE-like data
-		w.Write([]byte(`{"hacker_news_search":[{"title":"Test"}]}`))
+		w.Write([]byte(`{"hacker_news_search":[{"title":"Test Result","link":"https://example.com","snippet":"Test"}]}`))
 	}))
 	defer server.Close()
 
-	client := &Client{baseURL: server.URL, apiKey: "test-key", httpClient: server.Client()}
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
 	bufReader, err := client.SearchStream(context.Background(), &SearchRequest{
 		Prompt: "test stream",
 		Tools:  []string{"web"},
@@ -215,7 +215,6 @@ func TestSearchStream_Success(t *testing.T) {
 		t.Fatalf("SearchStream failed: %v", err)
 	}
 
-	// Read content
 	data, err := io.ReadAll(bufReader)
 	if err != nil {
 		t.Fatalf("failed to read stream: %v", err)
@@ -237,7 +236,7 @@ func TestSearchStream_Non200(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := &Client{baseURL: server.URL, apiKey: "test-key", httpClient: server.Client()}
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
 	_, err := client.SearchStream(context.Background(), &SearchRequest{
 		Prompt: "test",
 		Tools:  []string{"web"},
