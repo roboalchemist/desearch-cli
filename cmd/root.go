@@ -9,10 +9,12 @@ import (
 )
 
 var (
-	cfgFile     string
-	apiKey      string
-	jsonOut     bool
-	versionFlag bool
+	cfgFile      string
+	apiKey       string
+	jsonOut      bool
+	versionFlag  bool
+	flagVerbose  bool
+	flagQuiet    bool
 )
 
 // version is set at build time via -ldflags "-X github.com/roboalchemist/desearch-cli/cmd.version=$(git describe --tags)"
@@ -83,4 +85,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "API key for authentication (overrides config file)")
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "Output in JSON format")
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "V", false, "Print version")
+	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Show verbose progress output to stderr")
+	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "", false, "Suppress stderr output except errors")
+	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "silent", "", false, "Suppress stderr output except errors (alias for --quiet)")
 }
