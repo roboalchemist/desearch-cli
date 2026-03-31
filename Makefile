@@ -11,6 +11,7 @@ fmt:
 	go fmt ./...
 
 lint:
+	@which golangci-lint > /dev/null 2>&1 || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	golangci-lint run
 
 build:
@@ -27,7 +28,7 @@ test-unit:
 	@go tool cover -func=coverage.out | grep total || true
 	@echo "Checking pkg/ coverage..."
 	@total=$$(go tool cover -func=coverage.out | grep "total" | awk '{print $$3}' | sed 's/%//'); \
-	if [ "$$total" != "" ] && [ "$$total" -lt 75 ]; then \
+	if [ "$$total" != "" ] && awk "BEGIN {exit !($$total < 75)}"; then \
 		echo "WARNING: Overall coverage is $${total}%, which is below target"; \
 	fi
 
