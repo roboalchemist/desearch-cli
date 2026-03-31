@@ -1,0 +1,143 @@
+package cmd
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/roboalchemist/desearch-cli/pkg/api"
+	"github.com/roboalchemist/desearch-cli/pkg/auth"
+	"github.com/spf13/cobra"
+)
+
+var (
+	completionSystemMessage string
+)
+
+var completionCmd = &cobra.Command{
+	Use:   "completion <query>",
+	Short: "Get an AI-generated summary without per-source results",
+	Long: `Streams an AI-generated summary for the given query.
+
+This command always streams results. It does not return per-source search results,
+only the final AI summary.
+
+Example:
+  desearch completion "what is bittensor"
+  desearch completion "explain transformers" --system-message "Summarize in simple terms"`,
+	Args: cobra.ExactArgs(1),
+	RunE: runCompletion,
+}
+
+func init() {
+	rootCmd.AddCommand(completionCmd)
+	completionCmd.Flags().StringVar(&completionSystemMessage, "system-message", "", "Optional system message to override the default")
+}
+
+func runCompletion(cmd *cobra.Command, args []string) error {
+	query := args[0]
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle Ctrl+C gracefully
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		cancel()
+	}()
+
+	// Get API key
+	apiKey := apiKey
+	if apiKey == "" {
+		apiKey = auth.GetAPIKey()
+	}
+	if apiKey == "" {
+		return fmt.Errorf("no API key found")
+	}
+
+	client := api.NewClient(apiKey)
+
+	streaming := true
+	resultType := "LINKS_WITH_FINAL_SUMMARY"
+
+	req := &api.SearchRequest{
+		Prompt:      query,
+		Streaming:   &streaming,
+		ResultType: &resultType,
+	}
+
+	if completionSystemMessage != "" {
+		req.SystemMessage = &completionSystemMessage
+	}
+
+	reader, err := client.SearchStream(ctx, req)
+	if err != nil {
+		return fmt.Errorf("search stream failed: %w", err)
+	}
+
+	// Stream completion text chunks as they arrive
+	for {
+		select {
+		case <-ctx.Done():
+			// User cancelled (e.g., Ctrl+C)
+			return ctx.Err()
+		default:
+		}
+
+		chunk, err := reader.ReadBytes('\n')
+		if len(chunk) > 0 {
+			// Try to parse as a partial response to extract completion chunks
+			// The stream may send JSON objects with completion text
+			var partial map[string]interface{}
+			if err := json.Unmarshal(chunk, &partial); err == nil {
+				// Look for completion field
+				if completion, ok := partial["completion"].(string); ok && completion != "" {
+					// Print without extra newline, flush immediately
+					fmt.Print(completion)
+					os.Stdout.Sync()
+				}
+				// Also check for text field which may contain completion chunks
+				if text, ok := partial["text"].(string); ok && text != "" {
+					// Only print if completion is not set or empty
+					if _, hasCompletion := partial["completion"]; !hasCompletion {
+						fmt.Print(text)
+						os.Stdout.Sync()
+					}
+				}
+			} else {
+				// Not JSON - try to print raw chunk if it looks like text
+				trimmed := strings.TrimSpace(string(chunk))
+				if trimmed != "" {
+					// Check if it might be plain text completion
+					if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+						fmt.Print(trimmed)
+						os.Stdout.Sync()
+					}
+				}
+			}
+		}
+
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			// Check if context was cancelled
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			// Some other error - could be done streaming
+			break
+		}
+	}
+
+	// Print final newline when done
+	fmt.Println()
+
+	return nil
+}
