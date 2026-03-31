@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -16,6 +13,7 @@ import (
 
 func resetCompletionFlags() {
 	completionSystemMessage = ""
+	completionJSON = false
 }
 
 func TestCompletionCmd_FlagParsing(t *testing.T) {
@@ -27,7 +25,7 @@ func TestCompletionCmd_FlagParsing(t *testing.T) {
 		{
 			name:    "no args shows help and runs PreRun",
 			args:    []string{},
-			wantErr: false, // cobra shows help but doesn't error
+			wantErr: false,
 		},
 		{
 			name:    "single arg is valid",
@@ -46,7 +44,6 @@ func TestCompletionCmd_FlagParsing(t *testing.T) {
 			cmd.SetErr(buf)
 
 			_ = cmd.Execute()
-			// Just verify command runs without panicking
 		})
 	}
 }
@@ -62,11 +59,9 @@ func TestCompletionCmd_Help(t *testing.T) {
 	if err != nil {
 		t.Errorf("completionCmd --help failed: %v", err)
 	}
-	// Help command should succeed - just verify no error
 }
 
 func TestRunCompletion_NoAPIKey(t *testing.T) {
-	// Save original and restore
 	origAPIKey := apiKey
 	t.Cleanup(func() {
 		apiKey = origAPIKey
@@ -87,7 +82,6 @@ func TestRunCompletion_NoAPIKey(t *testing.T) {
 }
 
 func TestCompletionRequest_Build(t *testing.T) {
-	// Test building a completion request
 	query := "test query"
 	systemMsg := "Be concise"
 
@@ -100,7 +94,6 @@ func TestCompletionRequest_Build(t *testing.T) {
 		ResultType:  &resultType,
 	}
 
-	// Simulate the request building logic from runCompletion
 	if systemMsg != "" {
 		req.SystemMessage = &systemMsg
 	}
@@ -163,15 +156,12 @@ func TestCompletionResponse_Parse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var partial map[string]interface{}
 			if err := json.Unmarshal([]byte(tt.data), &partial); err != nil {
-				// Non-JSON case
 				if !tt.wantOutput {
 					return
 				}
-				// For non-JSON, just verify we can print the raw text
 				return
 			}
 
-			// Check for completion field
 			if completion, ok := partial["completion"].(string); ok && completion != "" {
 				if !tt.wantOutput {
 					t.Errorf("expected no output but got completion: %s", completion)
@@ -182,7 +172,6 @@ func TestCompletionResponse_Parse(t *testing.T) {
 				return
 			}
 
-			// Check for text field
 			if text, ok := partial["text"].(string); ok && text != "" {
 				if !tt.wantOutput {
 					t.Errorf("expected no output but got text: %s", text)
@@ -193,7 +182,6 @@ func TestCompletionResponse_Parse(t *testing.T) {
 				return
 			}
 
-			// No output expected
 			if tt.wantOutput {
 				t.Errorf("expected output but got none for data: %s", tt.data)
 			}
@@ -202,80 +190,15 @@ func TestCompletionResponse_Parse(t *testing.T) {
 }
 
 func TestCompletionCmd_ContextCancellation(t *testing.T) {
-	// Test that context cancellation works properly
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
+	cancel()
 
-	// The function should return context.Canceled
 	if ctx.Err() != context.Canceled {
 		t.Errorf("context.Err() = %v, want %v", ctx.Err(), context.Canceled)
 	}
 }
 
-// Integration test with mock server - verifies httptest server works correctly
-func TestMockServer_Basic(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"completion": "Test completion response"}` + "\n"))
-	}))
-	defer server.Close()
-
-	// Simple GET test to verify server works
-	resp, err := server.Client().Get(server.URL)
-	if err != nil {
-		t.Fatalf("server not reachable: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("server status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
-}
-
-// TestSearchStreamResponse_Reader tests reading from a search stream response
-func TestSearchStreamResponse_Reader(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"completion": "Test 1"}` + "\n"))
-		w.Write([]byte(`{"completion": "Test 2"}` + "\n"))
-	}))
-	defer server.Close()
-
-	resp, err := server.Client().Get(server.URL)
-	if err != nil {
-		t.Fatalf("Get() error = %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Read all response
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("ReadAll() error = %v", err)
-	}
-
-	// Parse each line as JSON
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) != 2 {
-		t.Errorf("expected 2 lines, got %d", len(lines))
-	}
-
-	var result map[string]string
-	if err := json.Unmarshal([]byte(lines[0]), &result); err != nil {
-		t.Fatalf("first line unmarshal error: %v", err)
-	}
-	if result["completion"] != "Test 1" {
-		t.Errorf("first completion = %q, want %q", result["completion"], "Test 1")
-	}
-}
-
 func TestCompletionCmd_SystemMessage(t *testing.T) {
-	// Test the system message flag is properly set
 	resetCompletionFlags()
 	completionSystemMessage = "Test system message"
 

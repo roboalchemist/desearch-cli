@@ -246,6 +246,26 @@ func TestSearchStream_Non200(t *testing.T) {
 	}
 }
 
+func TestSearch_DecodeError(t *testing.T) {
+	// Test that Search handles non-JSON response from server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Write invalid JSON - this will cause json.NewDecoder to fail
+		w.Write([]byte(`{invalid json that cannot be decoded`))
+	}))
+	defer server.Close()
+
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	_, err := client.Search(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid JSON response")
+	}
+}
+
 func ptrString(s string) *string {
 	return &s
 }
