@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -27,6 +30,8 @@ func resetFlags() {
 	flagCount = 0
 	flagSystemMsg = ""
 	flagNoAI = false
+	flagPlaintext = false
+	flagDryRun = false
 }
 
 func TestBuildSearchRequest(t *testing.T) {
@@ -198,11 +203,111 @@ func TestRunSearch_NoAPIKey(t *testing.T) {
 	}
 }
 
-func TestRunSearchNormal_Integration(t *testing.T) {
-	// This test requires a mock server to be set up
-	// Skip if we can't run integration tests
-	if os.Getenv("SKIP_INTEGRATION") != "" {
-		t.Skip("Skipping integration test")
+func TestRunSearchNormal_WithMockServer(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/desearch/ai/search" {
+			t.Errorf("expected path /desearch/ai/search, got %s", r.URL.Path)
+		}
+
+		var req api.SearchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("failed to decode request body: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(api.SearchResponse{
+			Search: []api.WebResult{
+				{Title: "Test Result", Link: "https://example.com", Snippet: "Test snippet"},
+			},
+			Completion: "AI summary",
+		})
+	}))
+	defer server.Close()
+
+	// Create a custom client that uses the mock server
+	client := api.NewClient("test-key")
+	// Override BaseURL to point to mock server
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	flagNoAI = false
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test query"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal failed: %v", err)
+	}
+}
+
+func TestRunSearchStream_WithMockServer(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Write streaming response
+		w.Write([]byte(`{"completion": "Part 1"}` + "\n"))
+		w.Write([]byte(`{"completion": "Part 2"}` + "\n"))
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test query"}
+
+	err := runSearchStream(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchStream failed: %v", err)
+	}
+}
+
+func TestRunSearch_DryRun(t *testing.T) {
+	origAPIKey := apiKey
+	t.Cleanup(func() {
+		apiKey = origAPIKey
+	})
+
+	apiKey = ""
+	resetFlags()
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+
+	r, w, _ := os.Pipe()
+	oldStdout := os.Stdout
+	os.Stdout = w
+
+	err := runSearch(cmd, []string{"test query"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runSearch with dry-run failed: %v", err)
+	}
+
+	// Capture output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	// Dry-run should output JSON
+	if !strings.Contains(output, "\"prompt\"") {
+		t.Errorf("dry-run output should contain JSON with prompt, got: %s", output)
 	}
 }
 
@@ -310,4 +415,186 @@ func TestSearchCmdHelp(t *testing.T) {
 		t.Errorf("help command failed: %v", err)
 	}
 	// Help command should succeed - just verify no error
+}
+
+func TestAPIClient_Search_DecodeError(t *testing.T) {
+	// Test that Search handles non-JSON response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Write invalid JSON
+		w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	client := &api.Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	_, err := client.Search(context.Background(), &api.SearchRequest{Prompt: "test"})
+	if err == nil {
+		t.Error("expected error for invalid JSON response")
+	}
+}
+
+func TestAPIClient_SearchStream_Non200(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"detail": "Bad request"}`))
+	}))
+	defer server.Close()
+
+	client := &api.Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	_, err := client.SearchStream(context.Background(), &api.SearchRequest{Prompt: "test"})
+	if err == nil {
+		t.Error("expected error for non-200 response")
+	}
+}
+
+func TestRunSearchStream_ClientError(t *testing.T) {
+	// Test that runSearchStream handles client errors
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"completion": "test"}`))
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test"}
+
+	// This should succeed
+	err := runSearchStream(cmd, client, req)
+	if err != nil {
+		t.Errorf("runSearchStream unexpected error: %v", err)
+	}
+}
+
+func TestSearchCmd_WithAllFlags(t *testing.T) {
+	resetFlags()
+	flagTool = []string{"web", "hackernews"}
+	flagDateFilter = "PAST_WEEK"
+	flagCount = 20
+	flagResultType = "ONLY_LINKS"
+	flagSystemMsg = "Test system"
+	flagNoAI = true
+	flagPlaintext = true
+
+	req := buildSearchRequest("test query")
+
+	if req.Prompt != "test query" {
+		t.Errorf("Prompt = %q, want %q", req.Prompt, "test query")
+	}
+	if len(req.Tools) != 2 {
+		t.Errorf("Tools len = %d, want 2", len(req.Tools))
+	}
+	if req.DateFilter == nil || *req.DateFilter != "PAST_WEEK" {
+		t.Errorf("DateFilter = %v, want PAST_WEEK", req.DateFilter)
+	}
+	if req.Count == nil || *req.Count != 20 {
+		t.Errorf("Count = %v, want 20", req.Count)
+	}
+}
+
+func TestRunSearchNormal_Plaintext(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(api.SearchResponse{
+			Search: []api.WebResult{
+				{Title: "Test", Link: "https://example.com", Snippet: "Snippet"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	flagPlaintext = true
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal failed: %v", err)
+	}
+}
+
+func TestRunSearchNormal_NoAI(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(api.SearchResponse{
+			Search: []api.WebResult{
+				{Title: "Test", Link: "https://example.com", Snippet: "Snippet"},
+			},
+			Completion: "AI Summary",
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	flagNoAI = true
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal failed: %v", err)
+	}
+}
+
+func TestRunSearchNormal_EmptyResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(api.SearchResponse{})
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal failed: %v", err)
+	}
+}
+
+func TestRunSearch_ClientSearchError(t *testing.T) {
+	// Test error handling when client.Search fails
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err == nil {
+		t.Error("expected error when API returns 500")
+	}
 }

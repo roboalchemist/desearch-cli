@@ -209,3 +209,31 @@ func TestLoadConfig_Persistence(t *testing.T) {
 		assert.Equal(t, 25, loaded.DefaultCount)
 	})
 }
+
+func TestLoadConfig_InvalidTOML(t *testing.T) {
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	t.Cleanup(func() {
+		if origXDG == "" {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		} else {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		}
+	})
+
+	t.Run("returns error for invalid TOML content", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Write invalid TOML content
+		configFile := filepath.Join(tmpDir, "desearch-cli", "config.toml")
+		err := os.MkdirAll(filepath.Dir(configFile), 0700)
+		require.NoError(t, err)
+
+		err = os.WriteFile(configFile, []byte("invalid toml {[["), 0600)
+		require.NoError(t, err)
+
+		_, err = LoadConfig()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "parsing config file")
+	})
+}

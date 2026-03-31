@@ -24,14 +24,23 @@ test: build
 
 test-unit:
 	go test -race -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out | grep total
+	@go tool cover -func=coverage.out | grep total || true
+	@echo "Checking pkg/ coverage..."
+	@total=$$(go tool cover -func=coverage.out | grep "total" | awk '{print $$3}' | sed 's/%//'); \
+	if [ "$$total" != "" ] && [ "$$total" -lt 75 ]; then \
+		echo "WARNING: Overall coverage is $${total}%, which is below target"; \
+	fi
 
 test-integration:
-	./desearch search "test" --dry-run
+	go test -v -tags=integration -run TestIntegration ./...
+	@echo "Integration tests passed"
+
+test-integration-live:
+	go test -v -tags=integration -run TestIntegration_LiveAPI ./... \
+		-DESEARCH_API_KEY=$$DESEARCH_API_KEY
 
 man:
 	go run github.com/spf13/cobra-cli/cmd gendocs --help 2>/dev/null || true
-	# generate man pages if cobra-doc available
 
 install:
 	sudo install -m 755 desearch /usr/local/bin/
@@ -51,6 +60,7 @@ help:
 	@echo "  test              - smoke tests (no API key needed)"
 	@echo "  test-unit         - unit tests with coverage"
 	@echo "  test-integration  - integration tests"
+	@echo "  test-integration-live - integration tests with live API (requires DESEARCH_API_KEY)"
 	@echo "  man               - generate man pages"
 	@echo "  install           - install to /usr/local/bin/"
 	@echo "  check             - fmt + lint + test + test-unit"
