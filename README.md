@@ -190,16 +190,9 @@ desearch config clear
 
 ## Configuration File
 
+See [docs/config.md](docs/config.md) for full configuration documentation including the TOML schema, JSONC schema with comments, environment variable overrides, and defaults table.
+
 Config is stored at `~/.config/desearch-cli/config.toml` (XDG spec).
-
-```toml
-api_key = "YOUR_KEY"
-default_tools = ["web", "hackernews", "reddit", "wikipedia", "youtube", "twitter", "arxiv"]
-default_date_filter = "PAST_24_HOURS"
-default_count = 10
-```
-
-All fields are optional. Any field not set uses the API server defaults.
 
 ## Output Format
 

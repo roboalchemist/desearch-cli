@@ -1,0 +1,96 @@
+# desearch-cli
+
+CLI tool for Desearch AI — a contextual AI search engine that aggregates results across web, Hacker News, Reddit, Wikipedia, YouTube, Twitter/X, and arXiv with AI-synthesized answers and citations.
+
+Single binary, no Python or Node.js dependencies.
+
+## Commands
+
+### `search` (default)
+```bash
+desearch [query] [flags]
+```
+Search across all or specified sources. This is the default command.
+
+### `completion`
+```bash
+desearch completion <query> [flags]
+```
+Stream an AI-generated summary without per-source search results.
+
+### `config`
+```bash
+desearch config [flags]
+```
+Manage API key and default settings.
+
+### `version`
+```bash
+desearch version
+```
+Show version information.
+
+### `docs`
+```bash
+desearch docs [flags]
+```
+Print full documentation.
+
+### `skill`
+```bash
+desearch skill [flags]
+```
+Manage Claude Code skill.
+
+## Search Flags
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--query string` | string | Search prompt (also the positional arg) |
+| `--tool strings` | []string | Sources to query: web, hackernews, reddit, wikipedia, youtube, twitter, arxiv |
+| `--date-filter string` | string | Date range: PAST_24_HOURS, PAST_2_DAYS, PAST_WEEK, PAST_2_WEEKS, PAST_MONTH, PAST_2_MONTHS, PAST_YEAR, PAST_2_YEARS |
+| `--start-date string` | string | ISO8601 UTC start bound |
+| `--end-date string` | string | ISO8601 UTC end bound |
+| `--streaming` | bool | Stream results as they arrive |
+| `--result-type string` | string | ONLY_LINKS or LINKS_WITH_FINAL_SUMMARY |
+| `--count int` | int | Results per source, 10-200 (default: 10) |
+| `--system-message string` | string | Override system prompt |
+| `--json` | bool | Output raw JSON |
+| `--no-ai` | bool | Skip AI completion/summary |
+
+## Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--api-key string` | API key for authentication (overrides config file) |
+| `--config string` | config file path (default ~/.config/desearch-cli/config.toml) |
+| `-v, --verbose` | Show verbose progress output |
+| `-V, --version` | Print version |
+
+## Configuration
+
+See: [docs/config.md](docs/config.md)
+
+## API
+
+See: [openapi.json](openapi.json)
+
+## Install
+
+```bash
+# Homebrew
+brew tap roboalchemist/private ssh://git@gitea.roboalch.com:2222/roboalchemist/homebrew-private.git
+brew install desearch
+
+# Or download from releases page
+```
+
+## Quick Start
+
+```bash
+# Set API key
+desearch config --api-key sk-xxxx
+
+# Search
+desearch "golang best practices"
+```
