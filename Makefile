@@ -12,7 +12,7 @@ fmt:
 
 lint:
 	@which golangci-lint > /dev/null 2>&1 || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run
+	@PATH="$(shell go env GOPATH)/bin:$(PATH)" golangci-lint run
 
 build:
 	go build -ldflags "-X github.com/roboalchemist/desearch-cli/cmd.version=$(VERSION)" -o desearch .

@@ -117,6 +117,10 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 }
 
 func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequest) error {
+	if flagVerbose {
+		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
+		fmt.Fprintf(os.Stderr, "Streaming results...\n")
+	}
 	ctx := context.Background()
 	reader, err := client.SearchStream(ctx, req)
 	if err != nil {
