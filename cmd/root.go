@@ -53,7 +53,8 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Skip API key check for certain commands that don't need auth
-		if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "docs" {
+<<<<<<< HEAD
+		if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "docs" || cmd.Name() == "skill" || cmd.Name() == "print" || cmd.Name() == "add" {
 			return
 		}
 
