@@ -418,10 +418,6 @@ func TestIntegration_Streaming(t *testing.T) {
 }
 
 func TestIntegration_ConfigDefaults(t *testing.T) {
-	if shouldSkipWriteTests() {
-		t.Skip("READONLY=1")
-	}
-
 	binary := buildBinary(t)
 
 	// Test --default-tool flag sets default tools in config
@@ -482,10 +478,6 @@ func TestIntegration_ConfigDefaults(t *testing.T) {
 }
 
 func TestIntegration_ConfigForce(t *testing.T) {
-	if shouldSkipWriteTests() {
-		t.Skip("READONLY=1")
-	}
-
 	binary := buildBinary(t)
 
 	// Test config clear --force flag
