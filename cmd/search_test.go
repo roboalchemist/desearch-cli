@@ -244,6 +244,60 @@ func TestRunSearch_FieldsWithDryRun(t *testing.T) {
 	}
 }
 
+func TestRunSearch_JQWithoutJSON_Error(t *testing.T) {
+	resetFlags()
+	flagJQ = ".prompt"
+	// jsonOut, flagNoAI, and flagDryRun are all false
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+
+	if err == nil {
+		t.Error("expected error for --jq without --json, --no-ai, or --dry-run")
+	}
+	if !strings.Contains(err.Error(), "--jq requires --json or --no-ai to be set") {
+		t.Errorf("error should mention '--jq requires --json or --no-ai to be set', got: %v", err)
+	}
+}
+
+func TestRunSearch_JQWithDryRun_NoError(t *testing.T) {
+	origAPIKey := apiKey
+	t.Cleanup(func() {
+		apiKey = origAPIKey
+	})
+
+	apiKey = ""
+	resetFlags()
+	flagDryRun = true
+	flagJQ = ".prompt"
+
+	cmd := &cobra.Command{}
+
+	r, w, _ := os.Pipe()
+	oldStdout := os.Stdout
+	os.Stdout = w
+
+	err := runSearch(cmd, []string{"test query"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("--jq with --dry-run should not error, got: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatal(err)
+	}
+	output := buf.String()
+
+	// jq '.prompt' on the dry-run JSON should output "test query"
+	if !strings.Contains(output, "test query") {
+		t.Errorf("--jq '.prompt' with --dry-run should output prompt value, got: %s", output)
+	}
+}
+
 func TestRunSearch_FieldsWithJSON_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
