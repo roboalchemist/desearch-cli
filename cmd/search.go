@@ -39,14 +39,12 @@ func getAPIKey() string {
 	return key
 }
 
-func buildSearchRequest(query string) *api.SearchRequest {
+func buildSearchRequest(query string, cfg *auth.Config) *api.SearchRequest {
 	req := &api.SearchRequest{
 		Prompt: query,
 	}
 
-	if len(flagTool) > 0 {
-		req.Tools = flagTool
-	}
+	req.Tools = resolveTools(flagTool, cfg)
 
 	if flagDateFilter != "" {
 		req.DateFilter = &flagDateFilter
@@ -123,7 +121,8 @@ func runSearchOne(query string) error {
 		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
 	}
 
-	req := buildSearchRequest(query)
+	cfg, _ := auth.LoadConfig()
+	req := buildSearchRequest(query, cfg)
 
 	// Dry-run: print the request as JSON and return without calling the API
 	if flagDryRun {

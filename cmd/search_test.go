@@ -59,7 +59,7 @@ func TestBuildSearchRequest(t *testing.T) {
 			name:           "basic query",
 			query:          "test query",
 			wantPrompt:     "test query",
-			wantTools:      nil,
+			wantTools:      []string{"web"}, // default fallback when no tools specified
 			wantDateFilter: nil,
 			wantResultType: ptrString("LINKS_WITH_FINAL_SUMMARY"),
 			wantCount:      nil,
@@ -77,6 +77,7 @@ func TestBuildSearchRequest(t *testing.T) {
 			query:          "test",
 			dateFilter:     "PAST_WEEK",
 			wantPrompt:     "test",
+			wantTools:      []string{"web"}, // default fallback
 			wantDateFilter: ptrString("PAST_WEEK"),
 			wantResultType: ptrString("LINKS_WITH_FINAL_SUMMARY"),
 		},
@@ -86,6 +87,7 @@ func TestBuildSearchRequest(t *testing.T) {
 			startDate:      "2024-01-01",
 			endDate:        "2024-01-31",
 			wantPrompt:     "test",
+			wantTools:      []string{"web"}, // default fallback
 			wantDateFilter: nil,
 			wantResultType: ptrString("LINKS_WITH_FINAL_SUMMARY"),
 		},
@@ -94,6 +96,7 @@ func TestBuildSearchRequest(t *testing.T) {
 			query:          "test",
 			resultType:     "ONLY_LINKS",
 			wantPrompt:     "test",
+			wantTools:      []string{"web"}, // default fallback
 			wantResultType: ptrString("ONLY_LINKS"),
 		},
 		{
@@ -101,6 +104,7 @@ func TestBuildSearchRequest(t *testing.T) {
 			query:          "test",
 			count:          20,
 			wantPrompt:     "test",
+			wantTools:      []string{"web"}, // default fallback
 			wantCount:      ptrInt(20),
 			wantResultType: ptrString("LINKS_WITH_FINAL_SUMMARY"),
 		},
@@ -109,6 +113,7 @@ func TestBuildSearchRequest(t *testing.T) {
 			query:          "test",
 			systemMessage:  "Be concise",
 			wantPrompt:     "test",
+			wantTools:      []string{"web"}, // default fallback
 			wantResultType: ptrString("LINKS_WITH_FINAL_SUMMARY"),
 		},
 	}
@@ -147,7 +152,7 @@ func TestBuildSearchRequest(t *testing.T) {
 				flagNoAI = true
 			}
 
-			req := buildSearchRequest(tt.query)
+			req := buildSearchRequest(tt.query, nil)
 
 			if req.Prompt != tt.wantPrompt {
 				t.Errorf("Prompt = %q, want %q", req.Prompt, tt.wantPrompt)
@@ -184,13 +189,20 @@ func TestGetAPIKey(t *testing.T) {
 }
 
 func TestRunSearch_NoAPIKey(t *testing.T) {
-	// Save original and restore
+	// Save original and restore (including env var which auth.GetAPIKey reads)
 	origAPIKey := apiKey
+	origEnvKey := os.Getenv("DESEARCH_API_KEY")
 	t.Cleanup(func() {
 		apiKey = origAPIKey
+		if origEnvKey != "" {
+			os.Setenv("DESEARCH_API_KEY", origEnvKey)
+		} else {
+			os.Unsetenv("DESEARCH_API_KEY")
+		}
 	})
 
 	apiKey = ""
+	os.Unsetenv("DESEARCH_API_KEY")
 	resetFlags()
 
 	cmd := &cobra.Command{}
@@ -622,7 +634,7 @@ func TestSearchCmd_WithAllFlags(t *testing.T) {
 	flagNoAI = true
 	flagPlaintext = true
 
-	req := buildSearchRequest("test query")
+	req := buildSearchRequest("test query", nil)
 
 	if req.Prompt != "test query" {
 		t.Errorf("Prompt = %q, want %q", req.Prompt, "test query")

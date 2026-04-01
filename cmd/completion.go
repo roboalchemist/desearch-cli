@@ -113,6 +113,8 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 
 	client := api.NewClient(apiKey)
 
+	cfg, _ := auth.LoadConfig()
+
 	streaming := true
 	resultType := "LINKS_WITH_FINAL_SUMMARY"
 
@@ -120,6 +122,7 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		Prompt:     query,
 		Streaming:  &streaming,
 		ResultType: &resultType,
+		Tools:      resolveTools(nil, cfg),
 	}
 
 	if completionSystemMessage != "" {
