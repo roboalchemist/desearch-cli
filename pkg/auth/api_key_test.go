@@ -143,7 +143,9 @@ func TestSaveConfig(t *testing.T) {
 		f.Close()
 
 		// Make the parent unreadable so MkdirAll can't traverse
-		os.Chmod(tmpDir, 0000)
+		if err := os.Chmod(tmpDir, 0000); err != nil {
+			t.Fatal(err)
+		}
 
 		cfg := &Config{APIKey: "some-key"}
 		err = SaveConfig(cfg)
@@ -151,7 +153,9 @@ func TestSaveConfig(t *testing.T) {
 		assert.Contains(t, err.Error(), "creating config directory")
 
 		// Restore so TempDir cleanup can proceed
-		os.Chmod(tmpDir, 0700)
+		if err := os.Chmod(tmpDir, 0700); err != nil {
+			t.Fatal(err)
+		}
 		os.Remove(readonlyFile)
 	})
 
@@ -196,7 +200,9 @@ func TestSaveConfig(t *testing.T) {
 		assert.Contains(t, err.Error(), "writing config file")
 
 		// Restore permissions so TempDir cleanup can proceed
-		os.Chmod(configDir, 0700)
+		if err := os.Chmod(configDir, 0700); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("overwrites existing config", func(t *testing.T) {
@@ -270,13 +276,17 @@ func TestGetAPIKey(t *testing.T) {
 		os.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 		// Remove all permissions from tmpDir so os.ReadFile fails with permission denied
-		os.Chmod(tmpDir, 0000)
+		if err := os.Chmod(tmpDir, 0000); err != nil {
+			t.Fatal(err)
+		}
 
 		result := GetAPIKey()
 		assert.Equal(t, "", result)
 
 		// Restore permissions so TempDir cleanup can proceed
-		os.Chmod(tmpDir, 0700)
+		if err := os.Chmod(tmpDir, 0700); err != nil {
+			t.Fatal(err)
+		}
 	})
 }
 

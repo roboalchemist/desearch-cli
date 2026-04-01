@@ -106,7 +106,7 @@ func init() {
 	configCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		// If no flags were provided, show help
 		if flagAPIKey == "" && flagDefaultDateFilter == "" && len(flagDefaultTools) == 0 {
-			cmd.Help()
+			_ = cmd.Help()
 			return nil
 		}
 

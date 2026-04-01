@@ -248,12 +248,14 @@ func TestRunSearch_FieldsWithJSON_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(api.SearchResponse{
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
 			Search: []api.WebResult{
 				{Title: "Test Result", Link: "https://example.com", Snippet: "Test snippet"},
 			},
 			Completion: "AI summary",
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -290,12 +292,14 @@ func TestRunSearchNormal_WithMockServer(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(api.SearchResponse{
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
 			Search: []api.WebResult{
 				{Title: "Test Result", Link: "https://example.com", Snippet: "Test snippet"},
 			},
 			Completion: "AI summary",
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -326,8 +330,12 @@ func TestRunSearchStream_WithMockServer(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		// Write streaming response
-		w.Write([]byte(`{"completion": "Part 1"}` + "\n"))
-		w.Write([]byte(`{"completion": "Part 2"}` + "\n"))
+		if _, err := w.Write([]byte(`{"completion": "Part 1"}` + "\n")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(`{"completion": "Part 2"}` + "\n")); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -373,7 +381,9 @@ func TestRunSearch_DryRun(t *testing.T) {
 
 	// Capture output
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatal(err)
+	}
 	output := buf.String()
 
 	// Dry-run should output JSON
@@ -494,7 +504,9 @@ func TestAPIClient_Search_DecodeError(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		// Write invalid JSON
-		w.Write([]byte(`{invalid json`))
+		if _, err := w.Write([]byte(`{invalid json`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -508,7 +520,9 @@ func TestAPIClient_Search_DecodeError(t *testing.T) {
 func TestAPIClient_SearchStream_Non200(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"detail": "Bad request"}`))
+		if _, err := w.Write([]byte(`{"detail": "Bad request"}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -523,7 +537,9 @@ func TestRunSearchStream_ClientError(t *testing.T) {
 	// Test that runSearchStream handles client errors
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"completion": "test"}`))
+		if _, err := w.Write([]byte(`{"completion": "test"}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -572,11 +588,13 @@ func TestRunSearchNormal_Plaintext(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(api.SearchResponse{
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
 			Search: []api.WebResult{
 				{Title: "Test", Link: "https://example.com", Snippet: "Snippet"},
 			},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -600,12 +618,14 @@ func TestRunSearchNormal_NoAI(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(api.SearchResponse{
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
 			Search: []api.WebResult{
 				{Title: "Test", Link: "https://example.com", Snippet: "Snippet"},
 			},
 			Completion: "AI Summary",
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -629,7 +649,9 @@ func TestRunSearchNormal_EmptyResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(api.SearchResponse{})
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 

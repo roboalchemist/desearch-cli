@@ -138,11 +138,13 @@ func TestSearch_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(SearchResponse{
+		if err := json.NewEncoder(w).Encode(SearchResponse{
 			HackerNewsSearch: []HackerNewsResult{
 				{Title: "Test Result", Link: "https://example.com", Snippet: "Test"},
 			},
-		})
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -164,7 +166,9 @@ func TestSearch_Success(t *testing.T) {
 func TestSearch_Non200(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"detail": "Invalid API key"}`))
+		if _, err := w.Write([]byte(`{"detail": "Invalid API key"}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -201,7 +205,9 @@ func TestSearchStream_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"hacker_news_search":[{"title":"Test Result","link":"https://example.com","snippet":"Test"}]}`))
+		if _, err := w.Write([]byte(`{"hacker_news_search":[{"title":"Test Result","link":"https://example.com","snippet":"Test"}]}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -231,7 +237,9 @@ func TestSearchStream_Success(t *testing.T) {
 func TestSearchStream_Non200(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte(`{"detail": "Rate limit exceeded"}`))
+		if _, err := w.Write([]byte(`{"detail": "Rate limit exceeded"}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -251,7 +259,9 @@ func TestSearch_DecodeError(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		// Write invalid JSON - this will cause json.NewDecoder to fail
-		w.Write([]byte(`{invalid json that cannot be decoded`))
+		if _, err := w.Write([]byte(`{invalid json that cannot be decoded`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -271,7 +281,9 @@ func TestSearch_Non200_JSONDecodeError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		// Return malformed JSON — client should still return an error.
-		w.Write([]byte(`{not valid json`))
+		if _, err := w.Write([]byte(`{not valid json`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -291,7 +303,9 @@ func TestSearchStream_Non200_JSONDecodeError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		// Return malformed JSON — client should still return an error.
-		w.Write([]byte(`{malformed`))
+		if _, err := w.Write([]byte(`{malformed`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -311,7 +325,9 @@ func TestSearch_Non200_StructuredError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"detail": "invalid-api-key"}`))
+		if _, err := w.Write([]byte(`{"detail": "invalid-api-key"}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 
@@ -331,7 +347,9 @@ func TestSearch_Non200_RawBodyError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"error": "something went wrong"}`))
+		if _, err := w.Write([]byte(`{"error": "something went wrong"}`)); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer server.Close()
 

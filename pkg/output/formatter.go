@@ -17,6 +17,7 @@ func init() {
 	// codes, so NO_COLOR is trivially satisfied. This init() is here to ensure
 	// correct behavior if color support is added in the future via fatih/color.
 	// When that library is imported, set color.NoColor = true here.
+	//nolint:staticcheck
 	if os.Getenv("NO_COLOR") != "" {
 		// color.NoColor = true  // uncomment when fatih/color is imported
 	}
@@ -29,10 +30,10 @@ type Formatter interface {
 
 // OutputFlags holds the flags that control output formatting.
 type OutputFlags struct {
-	JSON        bool
-	NoAI        bool
-	Tool        string // empty means all tools
-	Plaintext   bool
+	JSON         bool
+	NoAI         bool
+	Tool         string // empty means all tools
+	Plaintext    bool
 	FilterFields string // comma-separated top-level field names to include in JSON output
 }
 

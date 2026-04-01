@@ -162,6 +162,7 @@ func TestConfigCmd_EmptyAPIKey(t *testing.T) {
 	// Test that empty API key after trimming is rejected
 	// This tests the logic in config.go
 	emptyKey := "   "
+	//nolint:staticcheck
 	if strings.TrimSpace(emptyKey) == "" {
 		// This is the expected behavior - empty keys should be rejected
 		// The actual rejection happens in the Run function via os.Exit
