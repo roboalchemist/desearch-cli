@@ -41,7 +41,7 @@ test-integration-live:
 		-DESEARCH_API_KEY=$$DESEARCH_API_KEY
 
 man:
-	go run github.com/spf13/cobra-cli/cmd gendocs --help 2>/dev/null || true
+	go run ./cmd/gendocs > docs/desearch.1
 
 install:
 	sudo install -m 755 desearch /usr/local/bin/
