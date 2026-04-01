@@ -99,6 +99,7 @@ func isNoAuthCommand(cmd *cobra.Command) bool {
 		"zsh":         true,
 		"fish":        true,
 		"powershell":  true,
+		"clear":       true,
 	}
 	for c := cmd; c != nil; c = c.Parent() {
 		if noAuthCommands[c.Name()] {

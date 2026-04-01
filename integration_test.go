@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -304,7 +305,7 @@ func TestIntegration_FlagCombinations(t *testing.T) {
 
 	for _, flags := range combos {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			// Build fresh args slice to avoid mutating the backing array
+			// Build a fresh args slice to avoid mutating the backing array
 			args := append([]string{"search", "test"}, flags...)
 			args = append(args, "--dry-run")
 			cmd := exec.Command(binary, args...)
@@ -386,19 +387,19 @@ func TestIntegration_StartEndDate(t *testing.T) {
 func TestIntegration_Streaming(t *testing.T) {
 	binary := buildBinary(t)
 
-	// Test --streaming flag is accepted (will fail due to no API key, but should not crash)
-	// We use a very short timeout since it will hang waiting for a real API response
-	cmd := exec.Command(binary, "search", "test", "--streaming", "--tool", "web")
-	cmd.Timeout = 3 * time.Second
+	// Test --streaming flag is accepted (will fail due to no API key, but should not crash).
+	// Use exec.CommandContext with a short timeout to avoid hanging indefinitely.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, binary, "search", "test", "--streaming", "--tool", "web")
 	output, err := cmd.CombinedOutput()
 
-	// Exit code 1 = API error (expected, no key); exit code 2 = CLI arg parse error (bug)
+	// Check if the flag was rejected (exit code 2 = CLI arg parse error = bug)
 	exitCode := -1
 	if cmd.ProcessState != nil {
 		exitCode = cmd.ProcessState.ExitCode()
 	}
 
-	// The command should not fail due to an unknown flag (exit code 2)
 	if exitCode == 2 {
 		t.Errorf("streaming flag was rejected as unknown:\n%s", output)
 		return
@@ -409,7 +410,7 @@ func TestIntegration_Streaming(t *testing.T) {
 		t.Logf("streaming command exited with: %v\nOutput: %s", err, output)
 	}
 
-	// Verify the flag was parsed (output should not contain "unknown flag" or "flag not found")
+	// Verify the flag was parsed (output should not contain "unknown flag")
 	outputStr := string(output)
 	if strings.Contains(outputStr, "unknown flag") || strings.Contains(outputStr, "flag not found") {
 		t.Errorf("streaming flag was not recognized:\n%s", output)
@@ -426,7 +427,7 @@ func TestIntegration_ConfigDefaults(t *testing.T) {
 	// Test --default-tool flag sets default tools in config
 	t.Run("set default-tool", func(t *testing.T) {
 		cmd := exec.Command(binary, "config", "--default-tool", "web", "--default-tool", "hackernews")
-		output, err := cmd.CombinedOutput()
+		output, _ := cmd.CombinedOutput()
 
 		// Should not crash or report unknown flag
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
@@ -436,15 +437,17 @@ func TestIntegration_ConfigDefaults(t *testing.T) {
 
 		// Should report config saved or help text
 		outputStr := string(output)
-		if err != nil && !strings.Contains(outputStr, "Configuration saved") {
-			t.Logf("config output: %s", outputStr)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 {
+			if !strings.Contains(outputStr, "Configuration saved") {
+				t.Logf("config output: %s", outputStr)
+			}
 		}
 	})
 
 	// Test --default-date-filter flag
 	t.Run("set default-date-filter", func(t *testing.T) {
 		cmd := exec.Command(binary, "config", "--default-date-filter", "PAST_WEEK")
-		output, err := cmd.CombinedOutput()
+		output, _ := cmd.CombinedOutput()
 
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
 			t.Errorf("default-date-filter flag was rejected:\n%s", output)
@@ -452,15 +455,17 @@ func TestIntegration_ConfigDefaults(t *testing.T) {
 		}
 
 		outputStr := string(output)
-		if err != nil && !strings.Contains(outputStr, "Configuration saved") {
-			t.Logf("config output: %s", outputStr)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 {
+			if !strings.Contains(outputStr, "Configuration saved") {
+				t.Logf("config output: %s", outputStr)
+			}
 		}
 	})
 
 	// Test --default-tool and --default-date-filter together
 	t.Run("set both default flags", func(t *testing.T) {
 		cmd := exec.Command(binary, "config", "--default-tool", "reddit", "--default-date-filter", "PAST_MONTH")
-		output, err := cmd.CombinedOutput()
+		output, _ := cmd.CombinedOutput()
 
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
 			t.Errorf("combined default flags were rejected:\n%s", output)
@@ -468,8 +473,10 @@ func TestIntegration_ConfigDefaults(t *testing.T) {
 		}
 
 		outputStr := string(output)
-		if err != nil && !strings.Contains(outputStr, "Configuration saved") {
-			t.Logf("config output: %s", outputStr)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 {
+			if !strings.Contains(outputStr, "Configuration saved") {
+				t.Logf("config output: %s", outputStr)
+			}
 		}
 	})
 }
@@ -484,7 +491,7 @@ func TestIntegration_ConfigForce(t *testing.T) {
 	// Test config clear --force flag
 	t.Run("clear with force", func(t *testing.T) {
 		cmd := exec.Command(binary, "config", "clear", "--force")
-		output, err := cmd.CombinedOutput()
+		output, _ := cmd.CombinedOutput()
 
 		// Should not crash or report unknown flag
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
@@ -504,7 +511,7 @@ func TestIntegration_ConfigForce(t *testing.T) {
 	// Test config clear -f (short form)
 	t.Run("clear with -f short flag", func(t *testing.T) {
 		cmd := exec.Command(binary, "config", "clear", "-f")
-		output, err := cmd.CombinedOutput()
+		output, _ := cmd.CombinedOutput()
 
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
 			t.Errorf("-f flag was rejected:\n%s", output)
