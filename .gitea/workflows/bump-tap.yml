@@ -20,5 +20,5 @@ jobs:
           sed -i "s|tag: \"[^\"]*\"|tag: \"${TAG}\"|" Formula/desearch-cli.rb
           git add Formula/desearch-cli.rb
           git diff --cached --quiet && echo "No changes to commit" && exit 0
-          git commit -m \"desearch-cli: bump to $TAG\"
+          git commit -m "desearch-cli: bump to ${TAG}"
           git push origin master
