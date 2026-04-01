@@ -155,6 +155,32 @@ func TestSaveConfig(t *testing.T) {
 		os.Remove(readonlyFile)
 	})
 
+	t.Run("returns error when ConfigPath fails", func(t *testing.T) {
+		// Clear both XDG_CONFIG_HOME and the HOME env var so os.UserHomeDir() fails.
+		origXDG := os.Getenv("XDG_CONFIG_HOME")
+		origHOME := os.Getenv("HOME")
+		t.Cleanup(func() {
+			if origXDG == "" {
+				os.Unsetenv("XDG_CONFIG_HOME")
+			} else {
+				os.Setenv("XDG_CONFIG_HOME", origXDG)
+			}
+			if origHOME == "" {
+				os.Unsetenv("HOME")
+			} else {
+				os.Setenv("HOME", origHOME)
+			}
+		})
+
+		os.Unsetenv("XDG_CONFIG_HOME")
+		os.Unsetenv("HOME")
+
+		cfg := &Config{APIKey: "some-key"}
+		err := SaveConfig(cfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "could not determine home directory")
+	})
+
 	t.Run("returns error when file cannot be written", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		os.Setenv("XDG_CONFIG_HOME", tmpDir)
