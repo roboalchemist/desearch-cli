@@ -92,4 +92,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Show verbose progress output to stderr")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "", false, "Suppress stderr output except errors")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "silent", "", false, "Suppress stderr output except errors (alias for --quiet)")
+
+	// GNU standard: --help should end with "Report bugs" footer
+	rootCmd.SetHelpTemplate(rootCmd.HelpTemplate() + "\nReport bugs at: https://gitea.roboalch.com/roboalchemist/desearch-cli/issues\n")
 }

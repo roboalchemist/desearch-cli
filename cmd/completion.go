@@ -19,8 +19,8 @@ var (
 	completionJSON          bool
 )
 
-var completionCmd = &cobra.Command{
-	Use:   "completion <query>",
+var aiCmd = &cobra.Command{
+	Use:   "ai <query>",
 	Short: "Get an AI-generated summary without per-source results",
 	Long: `Streams an AI-generated summary for the given query.
 
@@ -28,16 +28,57 @@ This command always streams results. It does not return per-source search result
 only the final AI summary.
 
 Example:
-  desearch completion "what is bittensor"
-  desearch completion "explain transformers" --system-message "Summarize in simple terms"`,
+  desearch ai "what is bittensor"
+  desearch ai "explain transformers" --system-message "Summarize in simple terms"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCompletion,
 }
 
+// Shell completion commands
+var completionBashCmd = &cobra.Command{
+	Use:   "bash",
+	Short: "Generate Bash completion script",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return rootCmd.GenBashCompletionFile(os.Stdout)
+	},
+}
+
+var completionZshCmd = &cobra.Command{
+	Use:   "zsh",
+	Short: "Generate Zsh completion script",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return rootCmd.GenZshCompletionFile(os.Stdout)
+	},
+}
+
+var completionFishCmd = &cobra.Command{
+	Use:   "fish",
+	Short: "Generate Fish completion script",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return rootCmd.GenFishCompletionFile(os.Stdout)
+	},
+}
+
+var completionPowerShellCmd = &cobra.Command{
+	Use:   "powershell",
+	Short: "Generate PowerShell completion script",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return rootCmd.GenPowerShellCompletionFile(os.Stdout)
+	},
+}
+
+var completionCmd = &cobra.Command{
+	Use:   "completion",
+	Short: "Generate shell completion scripts",
+}
+
 func init() {
+	rootCmd.AddCommand(aiCmd)
+	aiCmd.Flags().StringVar(&completionSystemMessage, "system-message", "", "Optional system message to override the default")
+	aiCmd.Flags().BoolVar(&completionJSON, "json", false, "Output raw JSON response")
+
 	rootCmd.AddCommand(completionCmd)
-	completionCmd.Flags().StringVar(&completionSystemMessage, "system-message", "", "Optional system message to override the default")
-	completionCmd.Flags().BoolVar(&completionJSON, "json", false, "Output raw JSON response")
+	completionCmd.AddCommand(completionBashCmd, completionZshCmd, completionFishCmd, completionPowerShellCmd)
 }
 
 func runCompletion(cmd *cobra.Command, args []string) error {
