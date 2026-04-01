@@ -2,7 +2,7 @@ package cmd
 
 import (
 	_ "embed"
-	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -17,7 +17,7 @@ var docsCmd = &cobra.Command{
 	Long:    "Print the full README documentation to stdout",
 	Example: "desearch docs",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(readme)
+		os.Stdout.Write([]byte(readme))
 		return nil
 	},
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ var versionCmd = &cobra.Command{
 	Example: `  desearch version
   desearch version -V`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("desearch-cli version", version)
+		fmt.Fprintln(os.Stdout, "desearch-cli version", version)
 		return nil
 	},
 }

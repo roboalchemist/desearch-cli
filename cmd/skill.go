@@ -14,7 +14,7 @@ var skillPrintCmd = &cobra.Command{
 	Short:   "Print SKILL.md to stdout",
 	Example: `  desearch skill print`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(skill.SKILLMD)
+		fmt.Fprintln(os.Stdout, skill.SKILLMD)
 		return nil
 	},
 }
@@ -39,7 +39,7 @@ var skillAddCmd = &cobra.Command{
 			return fmt.Errorf("writing SKILL.md: %w", err)
 		}
 
-		fmt.Printf("Skill installed to %s\n", destPath)
+		fmt.Fprintf(os.Stdout, "Skill installed to %s\n", destPath)
 		return nil
 	},
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
 	"github.com/roboalchemist/desearch-cli/pkg/auth"
@@ -86,11 +87,41 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--fields requires --json to be set")
 	}
 
+	// If --stdin is set, read queries from stdin and run each one
+	if flagStdin {
+		scanner := bufio.NewScanner(os.Stdin)
+		var queries []string
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line != "" {
+				queries = append(queries, line)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("reading stdin: %w", err)
+		}
+
+		var lastErr error
+		for i, q := range queries {
+			if i > 0 {
+				fmt.Fprintln(os.Stdout, "---")
+			}
+			fmt.Fprintf(os.Stdout, "Query: %s\n", q)
+			if err := runSearchOne(q); err != nil {
+				fmt.Fprintf(os.Stderr, "Error for query %q: %v\n", q, err)
+				lastErr = err
+			}
+		}
+		return lastErr
+	}
+
+	return runSearchOne(args[0])
+}
+
+func runSearchOne(query string) error {
 	if flagVerbose && !flagQuiet {
 		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
 	}
-
-	query := args[0]
 
 	req := buildSearchRequest(query)
 
@@ -120,9 +151,9 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	client := api.NewClient(apiKeyVal)
 
 	if flagStreaming {
-		return runSearchStream(cmd, client, req)
+		return runSearchStream(nil, client, req)
 	}
-	return runSearchNormal(cmd, client, req)
+	return runSearchNormal(nil, client, req)
 }
 
 func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequest) error {
@@ -188,7 +219,12 @@ returned as a complete response with AI summarization.`,
 	Example: `  desearch "golang best practices"
   desearch "rust vs go" --tool web --count 20
   desearch "AI news" --date-filter PAST_2_DAYS --streaming`,
-	Args:       cobra.ExactArgs(1),
+	Args: func(cmd *cobra.Command, args []string) error {
+		if flagStdin {
+			return nil // stdin mode: no positional args required
+		}
+		return cobra.ExactArgs(1)(cmd, args)
+	},
 	RunE:       runSearch,
 	SuggestFor: []string{"serch", "srch", "seach", "searc"},
 }
@@ -207,6 +243,7 @@ func init() {
 	searchCmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Build request and print as JSON without calling the API")
 	searchCmd.Flags().StringVar(&flagJQ, "jq", "", "jq expression to filter JSON output (requires --json or --no-ai)")
 	searchCmd.Flags().StringVar(&flagFields, "fields", "", "Comma-separated top-level JSON fields to include in output (requires --json)")
+	searchCmd.Flags().BoolVar(&flagStdin, "stdin", false, "Read queries from stdin (one per line)")
 
 	searchCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		cmd.Parent().HelpFunc()(cmd, args)

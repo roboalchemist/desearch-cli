@@ -48,10 +48,10 @@ var showCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("API Key:               %s\n", apiKeyDisplay)
-		fmt.Printf("Default Tools:         %v\n", cfg.DefaultTools)
-		fmt.Printf("Default Date Filter:   %s\n", cfg.DefaultDateFilter)
-		fmt.Printf("Default Count:         %d\n", cfg.DefaultCount)
+		fmt.Fprintf(os.Stdout, "API Key:               %s\n", apiKeyDisplay)
+		fmt.Fprintf(os.Stdout, "Default Tools:         %v\n", cfg.DefaultTools)
+		fmt.Fprintf(os.Stdout, "Default Date Filter:   %s\n", cfg.DefaultDateFilter)
+		fmt.Fprintf(os.Stdout, "Default Count:         %d\n", cfg.DefaultCount)
 		return nil
 	},
 }
@@ -72,7 +72,7 @@ var clearCmd = &cobra.Command{
 		}
 
 		if _, err := os.Stat(xdgPath); os.IsNotExist(err) {
-			fmt.Println("No config file to clear.")
+			fmt.Fprintln(os.Stdout, "No config file to clear.")
 			return nil
 		}
 
@@ -80,7 +80,7 @@ var clearCmd = &cobra.Command{
 			return fmt.Errorf("removing config file: %w", err)
 		}
 
-		fmt.Println("Configuration cleared.")
+		fmt.Fprintln(os.Stdout, "Configuration cleared.")
 		return nil
 	},
 }
@@ -139,7 +139,7 @@ func init() {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
-		fmt.Println("Configuration saved.")
+		fmt.Fprintln(os.Stdout, "Configuration saved.")
 		return nil
 	}
 }
