@@ -88,19 +88,19 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 // isNoAuthCommand checks if the command or any of its ancestors don't require auth
 func isNoAuthCommand(cmd *cobra.Command) bool {
 	noAuthCommands := map[string]bool{
-		"version":     true,
-		"help":        true,
-		"docs":        true,
-		"skill":       true,
-		"print":       true,
-		"add":         true,
-		"completion":  true,
-		"ai":          true,
-		"bash":        true,
-		"zsh":         true,
-		"fish":        true,
-		"powershell":  true,
-		"clear":       true,
+		"version":    true,
+		"help":       true,
+		"docs":       true,
+		"skill":      true,
+		"print":      true,
+		"add":        true,
+		"completion": true,
+		"ai":         true,
+		"bash":       true,
+		"zsh":        true,
+		"fish":       true,
+		"powershell": true,
+		"clear":      true,
 	}
 	for c := cmd; c != nil; c = c.Parent() {
 		if noAuthCommands[c.Name()] {

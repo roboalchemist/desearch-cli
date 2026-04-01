@@ -164,9 +164,9 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	}
 
 	formatter := output.NewFormatter(output.OutputFlags{
-		JSON:        jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
-		NoAI:        flagNoAI,
-		Plaintext:   flagPlaintext,
+		JSON:         jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
+		NoAI:         flagNoAI,
+		Plaintext:    flagPlaintext,
 		FilterFields: flagFields,
 	})
 	formatted := formatter.Format(resp)

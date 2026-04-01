@@ -248,10 +248,10 @@ func TestHumanFormatter_Format(t *testing.T) {
 
 func TestNewFormatter(t *testing.T) {
 	tests := []struct {
-		name          string
-		flags         OutputFlags
-		wantJSON      bool
-		wantFields    string
+		name       string
+		flags      OutputFlags
+		wantJSON   bool
+		wantFields string
 	}{
 		{
 			name:       "json flag returns JSONFormatter",
@@ -586,12 +586,12 @@ func TestEvaluateJQ_InvalidJSON(t *testing.T) {
 
 func TestFilterJSONFields(t *testing.T) {
 	tests := []struct {
-		name          string
-		data          string
-		fields        string
-		wantErr       bool
-		wantKeys      []string
-		wantMissing   []string
+		name        string
+		data        string
+		fields      string
+		wantErr     bool
+		wantKeys    []string
+		wantMissing []string
 	}{
 		{
 			name:     "single field",
@@ -614,16 +614,16 @@ func TestFilterJSONFields(t *testing.T) {
 			wantMissing: []string{"hacker_news_search"},
 		},
 		{
-			name:        "unknown field returns empty object",
-			data:        `{"search": []}`,
-			fields:      "nonexistent",
-			wantKeys:    []string{},
+			name:     "unknown field returns empty object",
+			data:     `{"search": []}`,
+			fields:   "nonexistent",
+			wantKeys: []string{},
 		},
 		{
-			name:     "invalid JSON",
-			data:     "not json",
-			fields:   "completion",
-			wantErr:  true,
+			name:    "invalid JSON",
+			data:    "not json",
+			fields:  "completion",
+			wantErr: true,
 		},
 	}
 

@@ -31,8 +31,8 @@ only the final AI summary.
 Example:
   desearch ai "what is bittensor"
   desearch ai "explain transformers" --system-message "Summarize in simple terms"`,
-	Args: cobra.ExactArgs(1),
-	RunE: runCompletion,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runCompletion,
 	Example: `desearch ai "what is bittensor"`,
 }
 
