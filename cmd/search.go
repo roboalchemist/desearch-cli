@@ -72,6 +72,10 @@ func buildSearchRequest(query string) *api.SearchRequest {
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
+	// Validate --fields cannot be used with --dry-run (no response to filter)
+	if flagFields != "" && flagDryRun {
+		return fmt.Errorf("--fields cannot be used with --dry-run")
+	}
 	// Validate --jq requires --json or --no-ai
 	if flagJQ != "" && !jsonOut && !flagNoAI {
 		return fmt.Errorf("--jq requires --json or --no-ai to be set")
@@ -79,10 +83,6 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	// Validate --fields requires --json
 	if flagFields != "" && !jsonOut {
 		return fmt.Errorf("--fields requires --json to be set")
-	}
-	// Validate --fields cannot be used with --dry-run (no response to filter)
-	if flagFields != "" && flagDryRun {
-		return fmt.Errorf("--fields cannot be used with --dry-run")
 	}
 
 	if flagVerbose && !flagQuiet {

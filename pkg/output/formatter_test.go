@@ -248,14 +248,22 @@ func TestHumanFormatter_Format(t *testing.T) {
 
 func TestNewFormatter(t *testing.T) {
 	tests := []struct {
-		name     string
-		flags    OutputFlags
-		wantJSON bool
+		name          string
+		flags         OutputFlags
+		wantJSON      bool
+		wantFields    string
 	}{
 		{
-			name:     "json flag returns JSONFormatter",
-			flags:    OutputFlags{JSON: true},
-			wantJSON: true,
+			name:       "json flag returns JSONFormatter",
+			flags:      OutputFlags{JSON: true},
+			wantJSON:   true,
+			wantFields: "",
+		},
+		{
+			name:       "json flag with FilterFields returns JSONFormatter with fields",
+			flags:      OutputFlags{JSON: true, FilterFields: "completion,search"},
+			wantJSON:   true,
+			wantFields: "completion,search",
 		},
 		{
 			name:     "no json flag returns HumanFormatter",
@@ -272,9 +280,12 @@ func TestNewFormatter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			formatter := NewFormatter(tt.flags)
-			_, isJSON := formatter.(*JSONFormatter)
+			jf, isJSON := formatter.(*JSONFormatter)
 			if isJSON != tt.wantJSON {
 				t.Errorf("NewFormatter() isJSON = %v, want %v", isJSON, tt.wantJSON)
+			}
+			if isJSON && jf.FilterFields != tt.wantFields {
+				t.Errorf("NewFormatter().FilterFields = %q, want %q", jf.FilterFields, tt.wantFields)
 			}
 		})
 	}
@@ -290,6 +301,9 @@ func TestOutputFlags_Defaults(t *testing.T) {
 	}
 	if flags.Tool != "" {
 		t.Errorf("OutputFlags.Tool = %q, want empty string", flags.Tool)
+	}
+	if flags.FilterFields != "" {
+		t.Errorf("OutputFlags.FilterFields = %q, want empty string", flags.FilterFields)
 	}
 }
 
@@ -568,4 +582,154 @@ func TestEvaluateJQ_InvalidJSON(t *testing.T) {
 	if err == nil {
 		t.Error("EvaluateJQ() expected error for invalid JSON, got nil")
 	}
+}
+
+func TestFilterJSONFields(t *testing.T) {
+	tests := []struct {
+		name          string
+		data          string
+		fields        string
+		wantErr       bool
+		wantKeys      []string
+		wantMissing   []string
+	}{
+		{
+			name:     "single field",
+			data:     `{"search": [{"title": "Test"}], "completion": "summary", "reddit_search": []}`,
+			fields:   "completion",
+			wantKeys: []string{"completion"},
+		},
+		{
+			name:        "multiple fields",
+			data:        `{"search": [{"title": "Test"}], "completion": "summary", "reddit_search": []}`,
+			fields:      "completion,search",
+			wantKeys:    []string{"completion", "search"},
+			wantMissing: []string{"reddit_search"},
+		},
+		{
+			name:        "fields with spaces trimmed",
+			data:        `{"search": [], "completion": "text", "hacker_news_search": []}`,
+			fields:      " completion , search ",
+			wantKeys:    []string{"completion", "search"},
+			wantMissing: []string{"hacker_news_search"},
+		},
+		{
+			name:        "unknown field returns empty object",
+			data:        `{"search": []}`,
+			fields:      "nonexistent",
+			wantKeys:    []string{},
+		},
+		{
+			name:     "invalid JSON",
+			data:     "not json",
+			fields:   "completion",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := FilterJSONFields([]byte(tt.data), tt.fields)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("FilterJSONFields() expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("FilterJSONFields() unexpected error: %v", err)
+				return
+			}
+
+			var parsed map[string]interface{}
+			if err := json.Unmarshal(result, &parsed); err != nil {
+				t.Errorf("FilterJSONFields() produced invalid JSON: %v", err)
+				return
+			}
+
+			for _, k := range tt.wantKeys {
+				if _, ok := parsed[k]; !ok {
+					t.Errorf("FilterJSONFields() missing expected key %q in output", k)
+				}
+			}
+
+			for _, k := range tt.wantMissing {
+				if _, ok := parsed[k]; ok {
+					t.Errorf("FilterJSONFields() should not contain key %q but got it", k)
+				}
+			}
+		})
+	}
+}
+
+func TestJSONFormatter_Format_FilterFields(t *testing.T) {
+	resp := &api.SearchResponse{
+		Search: []api.WebResult{
+			{Title: "Test Page", Link: "https://example.com", Snippet: "Test snippet"},
+		},
+		RedditSearch: []api.RedditResult{
+			{Title: "Reddit Post", Link: "https://reddit.com/r/test", Snippet: "Reddit snippet"},
+		},
+		Completion: "AI summary text",
+	}
+
+	t.Run("filters to single field", func(t *testing.T) {
+		formatter := &JSONFormatter{FilterFields: "completion"}
+		output := formatter.Format(resp)
+
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+			t.Fatalf("JSONFormatter.Format() produced invalid JSON: %v", err)
+		}
+
+		if _, ok := parsed["completion"]; !ok {
+			t.Errorf("JSONFormatter.Format() missing 'completion' key")
+		}
+		if _, ok := parsed["search"]; ok {
+			t.Errorf("JSONFormatter.Format() should not contain 'search' key")
+		}
+	})
+
+	t.Run("filters to multiple fields", func(t *testing.T) {
+		formatter := &JSONFormatter{FilterFields: "search,completion"}
+		output := formatter.Format(resp)
+
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+			t.Fatalf("JSONFormatter.Format() produced invalid JSON: %v", err)
+		}
+
+		if _, ok := parsed["search"]; !ok {
+			t.Errorf("JSONFormatter.Format() missing 'search' key")
+		}
+		if _, ok := parsed["completion"]; !ok {
+			t.Errorf("JSONFormatter.Format() missing 'completion' key")
+		}
+		if _, ok := parsed["reddit_search"]; ok {
+			t.Errorf("JSONFormatter.Format() should not contain 'reddit_search' key")
+		}
+	})
+
+	t.Run("empty FilterFields returns all fields", func(t *testing.T) {
+		formatter := &JSONFormatter{FilterFields: ""}
+		output := formatter.Format(resp)
+
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+			t.Fatalf("JSONFormatter.Format() produced invalid JSON: %v", err)
+		}
+
+		// All fields should be present
+		if _, ok := parsed["search"]; !ok {
+			t.Errorf("JSONFormatter.Format() missing 'search' key")
+		}
+		if _, ok := parsed["reddit_search"]; !ok {
+			t.Errorf("JSONFormatter.Format() missing 'reddit_search' key")
+		}
+		if _, ok := parsed["completion"]; !ok {
+			t.Errorf("JSONFormatter.Format() missing 'completion' key")
+		}
+	})
 }

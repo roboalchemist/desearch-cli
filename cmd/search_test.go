@@ -32,6 +32,8 @@ func resetFlags() {
 	flagNoAI = false
 	flagPlaintext = false
 	flagDryRun = false
+	flagJQ = ""
+	flagFields = ""
 }
 
 func TestBuildSearchRequest(t *testing.T) {
@@ -200,6 +202,75 @@ func TestRunSearch_NoAPIKey(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no API key") {
 		t.Errorf("error should mention 'no API key', got: %v", err)
+	}
+}
+
+func TestRunSearch_FieldsWithoutJSON(t *testing.T) {
+	// Save original and restore
+	origAPIKey := apiKey
+	t.Cleanup(func() {
+		apiKey = origAPIKey
+	})
+
+	apiKey = ""
+	resetFlags()
+	flagFields = "completion"
+	// jsonOut is false by default (zero value)
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+
+	if err == nil {
+		t.Error("expected error for --fields without --json")
+	}
+	if !strings.Contains(err.Error(), "--fields requires --json") {
+		t.Errorf("error should mention '--fields requires --json', got: %v", err)
+	}
+}
+
+func TestRunSearch_FieldsWithDryRun(t *testing.T) {
+	resetFlags()
+	flagFields = "completion"
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+
+	if err == nil {
+		t.Error("expected error for --fields with --dry-run")
+	}
+	if !strings.Contains(err.Error(), "--fields cannot be used with --dry-run") {
+		t.Errorf("error should mention '--fields cannot be used with --dry-run', got: %v", err)
+	}
+}
+
+func TestRunSearch_FieldsWithJSON_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(api.SearchResponse{
+			Search: []api.WebResult{
+				{Title: "Test Result", Link: "https://example.com", Snippet: "Test snippet"},
+			},
+			Completion: "AI summary",
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	flagFields = "completion"
+	jsonOut = true
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test query"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal with --fields failed: %v", err)
 	}
 }
 
