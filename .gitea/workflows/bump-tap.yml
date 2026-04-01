@@ -4,14 +4,63 @@ on:
     tags:
       - 'v*'
 jobs:
-  bump:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Pull latest
         run: git pull --ff-only
+
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: goreleaser release --clean
+
+      - name: Clone homebrew-private tap
+        run: git clone ssh://git@gitea.roboalch.com:2222/roboalchemist/homebrew-private.git tap-repo
+
+      - name: Update formula
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          cat > tap-repo/Formula/desearch-cli.rb << 'FORMULA'
+          class DesearchCli < Formula
+            desc "CLI for Desearch AI - contextual AI search across web, HN, Reddit, Wikipedia, YouTube, Twitter, arXiv"
+            homepage "https://gitea.roboalch.com/roboalchemist/desearch-cli"
+            url "ssh://git@gitea.roboalch.com:2222/roboalchemist/desearch-cli.git", tag: "VERSION_PLACEHOLDER", using: :git
+            license "MIT"
+            version "VERSION_PLACEHOLDER"
+
+            depends_on "go" => :build
+
+            def install
+              ldflags = "-s -w -X github.com/roboalchemist/desearch-cli/cmd.version=#{version}"
+              system "go", "build", *std_go_args(ldflags:), "-o", bin/"desearch"
+            end
+
+            test do
+              assert_match "desearch", shell_output("#{bin}/desearch --help 2>&1")
+              assert_match version.to_s, shell_output("#{bin}/desearch version 2>&1")
+            end
+          end
+          FORMULA
+
+          # Substitute version and tag
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" tap-repo/Formula/desearch-cli.rb
+          sed -i "s|tag: \"VERSION_PLACEHOLDER\"|tag: \"$TAG\"|" tap-repo/Formula/desearch-cli.rb
+
+          cat tap-repo/Formula/desearch-cli.rb
+
+      - name: Commit and push formula update
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          cd tap-repo
+          git config user.email "github-actions@roboalch.com"
+          git config user.name "github-actions"
+          git add Formula/desearch-cli.rb
+          git commit -m "desearch-cli: bump to ${{ github.ref_name }}"
+          git push
