@@ -39,7 +39,7 @@ var completionBashCmd = &cobra.Command{
 	Use:   "bash",
 	Short: "Generate Bash completion script",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return rootCmd.GenBashCompletionFile(os.Stdout)
+		return rootCmd.GenBashCompletion(os.Stdout)
 	},
 }
 
@@ -47,7 +47,7 @@ var completionZshCmd = &cobra.Command{
 	Use:   "zsh",
 	Short: "Generate Zsh completion script",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return rootCmd.GenZshCompletionFile(os.Stdout)
+		return rootCmd.GenZshCompletion(os.Stdout)
 	},
 }
 
@@ -55,7 +55,7 @@ var completionFishCmd = &cobra.Command{
 	Use:   "fish",
 	Short: "Generate Fish completion script",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return rootCmd.GenFishCompletionFile(os.Stdout)
+		return rootCmd.GenFishCompletion(os.Stdout, true)
 	},
 }
 
@@ -63,7 +63,7 @@ var completionPowerShellCmd = &cobra.Command{
 	Use:   "powershell",
 	Short: "Generate PowerShell completion script",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return rootCmd.GenPowerShellCompletionFile(os.Stdout)
+		return rootCmd.GenPowerShellCompletion(os.Stdout)
 	},
 }
 

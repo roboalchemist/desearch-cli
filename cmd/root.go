@@ -55,7 +55,7 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Skip API key check for certain commands that don't need auth
-		if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "docs" || cmd.Name() == "skill" || cmd.Name() == "print" || cmd.Name() == "add" {
+		if isNoAuthCommand(cmd) {
 			return
 		}
 
@@ -78,10 +78,39 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 	},
 }
 
+// isNoAuthCommand checks if the command or any of its ancestors don't require auth
+func isNoAuthCommand(cmd *cobra.Command) bool {
+	noAuthCommands := map[string]bool{
+		"version":     true,
+		"help":        true,
+		"docs":        true,
+		"skill":       true,
+		"print":       true,
+		"add":         true,
+		"completion":  true,
+		"ai":          true,
+		"bash":        true,
+		"zsh":         true,
+		"fish":        true,
+		"powershell":  true,
+	}
+	for c := cmd; c != nil; c = c.Parent() {
+		if noAuthCommands[c.Name()] {
+			return true
+		}
+	}
+	return false
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
 	rootCmd.Version = version
 	return rootCmd.Execute()
+}
+
+// RootCmd returns the root cobra command for use by gendocs.
+func RootCmd() *cobra.Command {
+	return rootCmd
 }
 
 func init() {
