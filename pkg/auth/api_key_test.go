@@ -226,13 +226,21 @@ func TestSaveConfig(t *testing.T) {
 
 func TestGetAPIKey(t *testing.T) {
 	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	origEnvKey := os.Getenv("DESEARCH_API_KEY")
 	t.Cleanup(func() {
 		if origXDG == "" {
 			os.Unsetenv("XDG_CONFIG_HOME")
 		} else {
 			os.Setenv("XDG_CONFIG_HOME", origXDG)
 		}
+		if origEnvKey == "" {
+			os.Unsetenv("DESEARCH_API_KEY")
+		} else {
+			os.Setenv("DESEARCH_API_KEY", origEnvKey)
+		}
 	})
+	// Unset env var so tests that check config-file behavior are not polluted.
+	os.Unsetenv("DESEARCH_API_KEY")
 
 	t.Run("returns empty string when config does not exist", func(t *testing.T) {
 		tmpDir := t.TempDir()

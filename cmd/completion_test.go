@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -62,12 +63,20 @@ func TestCompletionCmd_Help(t *testing.T) {
 }
 
 func TestRunCompletion_NoAPIKey(t *testing.T) {
+	// Save original and restore (including env var which auth.GetAPIKey reads)
 	origAPIKey := apiKey
+	origEnvKey := os.Getenv("DESEARCH_API_KEY")
 	t.Cleanup(func() {
 		apiKey = origAPIKey
+		if origEnvKey != "" {
+			os.Setenv("DESEARCH_API_KEY", origEnvKey)
+		} else {
+			os.Unsetenv("DESEARCH_API_KEY")
+		}
 	})
 
 	apiKey = ""
+	os.Unsetenv("DESEARCH_API_KEY")
 	resetCompletionFlags()
 
 	cmd := &cobra.Command{}
