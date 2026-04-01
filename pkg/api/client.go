@@ -406,6 +406,11 @@ func (c *Client) SearchStream(ctx context.Context, req *SearchRequest) (*bufio.R
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		// Try to decode as JSON for a structured error message.
+		var errResp struct{ Detail string }
+		if json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Detail != "" {
+			return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, errResp.Detail)
+		}
 		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 

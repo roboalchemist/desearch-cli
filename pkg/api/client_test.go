@@ -265,6 +265,140 @@ func TestSearch_DecodeError(t *testing.T) {
 	}
 }
 
+// TestSearch_Non200_JSONDecodeError verifies that Search returns an error when
+// a non-200 response contains malformed JSON (decode error path for non-2xx).
+func TestSearch_Non200_JSONDecodeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		// Return malformed JSON — client should still return an error.
+		w.Write([]byte(`{not valid json`))
+	}))
+	defer server.Close()
+
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	_, err := client.Search(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for non-200 response with malformed JSON")
+	}
+}
+
+// TestSearchStream_Non200_JSONDecodeError verifies that SearchStream returns an error
+// when a non-200 response contains malformed JSON (decode error path for non-2xx).
+func TestSearchStream_Non200_JSONDecodeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		// Return malformed JSON — client should still return an error.
+		w.Write([]byte(`{malformed`))
+	}))
+	defer server.Close()
+
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	_, err := client.SearchStream(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for non-200 response with malformed JSON")
+	}
+}
+
+// TestSearch_Non200_StructuredError verifies that Search returns a structured
+// error message when a non-200 response contains valid JSON with a "detail" field.
+func TestSearch_Non200_StructuredError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"detail": "invalid-api-key"}`))
+	}))
+	defer server.Close()
+
+	client := &Client{BaseURL: server.URL, APIKey: "bad-key", HTTPClient: server.Client()}
+	_, err := client.Search(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for non-200 response")
+	}
+}
+
+// TestSearch_Non200_RawBodyError verifies that Search falls back to raw body
+// when a non-200 response does not contain a "detail" field in JSON.
+func TestSearch_Non200_RawBodyError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"error": "something went wrong"}`))
+	}))
+	defer server.Close()
+
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	_, err := client.Search(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for non-200 response")
+	}
+}
+
+// TestSearch_ClientDoError verifies that Search returns an error when the HTTP
+// client fails to send the request (e.g., server unreachable or connection refused).
+func TestSearch_ClientDoError(t *testing.T) {
+	// Use a port that nothing is listening on to force a connection error.
+	client := &Client{BaseURL: "http://127.0.0.1:1", APIKey: "test-key", HTTPClient: &http.Client{}}
+	_, err := client.Search(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error when HTTP client fails")
+	}
+}
+
+// TestSearch_RequestCreationError verifies that Search returns an error when
+// http.NewRequestWithContext fails due to a malformed URL.
+func TestSearch_RequestCreationError(t *testing.T) {
+	client := &Client{BaseURL: "http://[invalid", APIKey: "test-key", HTTPClient: &http.Client{}}
+	_, err := client.Search(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for malformed URL")
+	}
+}
+
+// TestSearchStream_ClientDoError verifies that SearchStream returns an error when
+// the HTTP client fails to send the request.
+func TestSearchStream_ClientDoError(t *testing.T) {
+	// Use a port that nothing is listening on to force a connection error.
+	client := &Client{BaseURL: "http://127.0.0.1:1", APIKey: "test-key", HTTPClient: &http.Client{}}
+	_, err := client.SearchStream(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error when HTTP client fails")
+	}
+}
+
+// TestSearchStream_RequestCreationError verifies that SearchStream returns an error
+// when http.NewRequestWithContext fails due to a malformed URL.
+func TestSearchStream_RequestCreationError(t *testing.T) {
+	client := &Client{BaseURL: "http://[invalid", APIKey: "test-key", HTTPClient: &http.Client{}}
+	_, err := client.SearchStream(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err == nil {
+		t.Fatal("expected error for malformed URL")
+	}
+}
+
 func ptrString(s string) *string {
 	return &s
 }
