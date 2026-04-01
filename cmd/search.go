@@ -71,6 +71,11 @@ func buildSearchRequest(query string) *api.SearchRequest {
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
+	// Validate --jq requires --json or --no-ai
+	if flagJQ != "" && !jsonOut && !flagNoAI {
+		return fmt.Errorf("--jq requires --json or --no-ai to be set")
+	}
+
 	if flagVerbose && !flagQuiet {
 		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
 	}
@@ -85,7 +90,15 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal request: %w", err)
 		}
-		fmt.Print(string(data))
+		if flagJQ != "" {
+			filtered, err := output.EvaluateJQ(data, flagJQ)
+			if err != nil {
+				return fmt.Errorf("jq filter failed: %w", err)
+			}
+			fmt.Print(string(filtered))
+		} else {
+			fmt.Print(string(data))
+		}
 		return nil
 	}
 
@@ -116,9 +129,6 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	})
 	formatted := formatter.Format(resp)
 	if flagJQ != "" {
-		if !jsonOut && !flagNoAI {
-			return fmt.Errorf("--jq requires --json or --no-ai to be set")
-		}
 		filtered, err := output.EvaluateJQ([]byte(formatted), flagJQ)
 		if err != nil {
 			return fmt.Errorf("jq filter failed: %w", err)
