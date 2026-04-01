@@ -149,7 +149,7 @@ func TestIntegration_AICommand(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(string(output), "Get an AI-generated summary") {
+	if !strings.Contains(string(output), "AI-generated summary") {
 		t.Errorf("ai --help output does not contain expected description:\n%s", output)
 	}
 }

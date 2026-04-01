@@ -33,6 +33,7 @@ Example:
   desearch ai "explain transformers" --system-message "Summarize in simple terms"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCompletion,
+	Example: `desearch ai "what is bittensor"`,
 }
 
 // Shell completion commands
