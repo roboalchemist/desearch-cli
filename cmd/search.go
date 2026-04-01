@@ -25,6 +25,7 @@ var (
 	flagNoAI       bool
 	flagPlaintext  bool
 	flagDryRun     bool
+	flagJQ         string
 )
 
 func getAPIKey() string {
@@ -113,7 +114,19 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 		NoAI:      flagNoAI,
 		Plaintext: flagPlaintext,
 	})
-	fmt.Print(formatter.Format(resp))
+	formatted := formatter.Format(resp)
+	if flagJQ != "" {
+		if !jsonOut && !flagNoAI {
+			return fmt.Errorf("--jq requires --json or --no-ai to be set")
+		}
+		filtered, err := output.EvaluateJQ([]byte(formatted), flagJQ)
+		if err != nil {
+			return fmt.Errorf("jq filter failed: %w", err)
+		}
+		fmt.Print(string(filtered))
+	} else {
+		fmt.Print(formatted)
+	}
 	return nil
 }
 
@@ -171,6 +184,7 @@ func init() {
 	searchCmd.Flags().BoolVar(&flagNoAI, "no-ai", false, "Skip AI completion/summary")
 	searchCmd.Flags().BoolVarP(&flagPlaintext, "plaintext", "p", false, "Output as tab-separated values (title\\turl\\tsnippet)")
 	searchCmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Build request and print as JSON without calling the API")
+	searchCmd.Flags().StringVar(&flagJQ, "jq", "", "jq expression to filter JSON output (requires --json or --no-ai)")
 
 	searchCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		cmd.Parent().HelpFunc()(cmd, args)
