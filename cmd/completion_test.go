@@ -120,6 +120,8 @@ func TestCompletionRequest_Build(t *testing.T) {
 }
 
 func TestCompletionResponse_Parse(t *testing.T) {
+	// The Desearch API sends events as {"type": "text", "role": "summary", "content": "..."}
+	// Only "type": "text" events produce output; others are skipped.
 	tests := []struct {
 		name       string
 		data       string
@@ -127,37 +129,34 @@ func TestCompletionResponse_Parse(t *testing.T) {
 		wantText   string
 	}{
 		{
-			name:       "completion chunk",
-			data:       `{"completion": "This is a test completion"}`,
+			name:       "text event with content",
+			data:       `{"type": "text", "role": "summary", "content": "This is a test completion"}`,
 			wantOutput: true,
 			wantText:   "This is a test completion",
 		},
 		{
-			name:       "text chunk without completion",
-			data:       `{"text": "Some text"}`,
-			wantOutput: true,
-			wantText:   "Some text",
-		},
-		{
-			name:       "completion takes precedence",
-			data:       `{"completion": "AI text", "text": "raw text"}`,
-			wantOutput: true,
-			wantText:   "AI text",
-		},
-		{
-			name:       "empty completion",
-			data:       `{"completion": ""}`,
+			name:       "text event with empty content",
+			data:       `{"type": "text", "role": "summary", "content": ""}`,
 			wantOutput: false,
 		},
 		{
-			name:       "non-JSON raw text",
-			data:       "Just some plain text",
-			wantOutput: true,
-			wantText:   "Just some plain text",
+			name:       "metadata event skipped",
+			data:       `{"type": "metadata", "role": "summary", "content": "ignored"}`,
+			wantOutput: false,
 		},
 		{
-			name:       "JSON object without completion or text",
+			name:       "done event skipped",
+			data:       `{"type": "done"}`,
+			wantOutput: false,
+		},
+		{
+			name:       "JSON object without type field skipped",
 			data:       `{"other": "field"}`,
+			wantOutput: false,
+		},
+		{
+			name:       "non-JSON skipped silently",
+			data:       "Just some plain text",
 			wantOutput: false,
 		},
 	}
@@ -166,34 +165,34 @@ func TestCompletionResponse_Parse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var partial map[string]interface{}
 			if err := json.Unmarshal([]byte(tt.data), &partial); err != nil {
-				if !tt.wantOutput {
-					return
+				// Non-JSON is skipped silently
+				if tt.wantOutput {
+					t.Errorf("expected output but got non-JSON for data: %s", tt.data)
 				}
 				return
 			}
 
-			if completion, ok := partial["completion"].(string); ok && completion != "" {
-				if !tt.wantOutput {
-					t.Errorf("expected no output but got completion: %s", completion)
-				}
-				if completion != tt.wantText {
-					t.Errorf("completion = %q, want %q", completion, tt.wantText)
+			eventType, _ := partial["type"].(string)
+			if eventType != "text" {
+				if tt.wantOutput {
+					t.Errorf("expected output but event type=%q is not 'text'", eventType)
 				}
 				return
 			}
 
-			if text, ok := partial["text"].(string); ok && text != "" {
-				if !tt.wantOutput {
-					t.Errorf("expected no output but got text: %s", text)
-				}
-				if text != tt.wantText {
-					t.Errorf("text = %q, want %q", text, tt.wantText)
+			content, _ := partial["content"].(string)
+			if content == "" {
+				if tt.wantOutput {
+					t.Errorf("expected output but content is empty")
 				}
 				return
 			}
 
-			if tt.wantOutput {
-				t.Errorf("expected output but got none for data: %s", tt.data)
+			if !tt.wantOutput {
+				t.Errorf("expected no output but got content: %s", content)
+			}
+			if content != tt.wantText {
+				t.Errorf("content = %q, want %q", content, tt.wantText)
 			}
 		})
 	}
@@ -202,30 +201,36 @@ func TestCompletionResponse_Parse(t *testing.T) {
 func TestCompletionSSE_MultiEventParsing(t *testing.T) {
 	// Verify that when multiple SSE events are packed on one line (no newline
 	// between them), splitting on "data: " correctly extracts each JSON segment.
+	// Events use the real Desearch API format: {"type": "text", "role": "summary", "content": "..."}
 	tests := []struct {
 		name     string
 		raw      string
 		wantText []string
 	}{
 		{
-			name:     "single event with prefix",
-			raw:      `data: {"completion":"hello"}`,
+			name:     "single text event with prefix",
+			raw:      `data: {"type":"text","role":"summary","content":"hello"}`,
 			wantText: []string{"hello"},
 		},
 		{
-			name:     "two events packed on one line",
-			raw:      `data: {"completion":"foo"}data: {"completion":"bar"}`,
+			name:     "two text events packed on one line",
+			raw:      `data: {"type":"text","role":"summary","content":"foo"}data: {"type":"text","role":"summary","content":"bar"}`,
 			wantText: []string{"foo", "bar"},
 		},
 		{
 			name:     "DONE sentinel ignored",
-			raw:      `data: {"completion":"text"}data: [DONE]`,
+			raw:      `data: {"type":"text","role":"summary","content":"text"}data: [DONE]`,
 			wantText: []string{"text"},
 		},
 		{
 			name:     "empty segment skipped",
-			raw:      `data: {"completion":"only"}data: `,
+			raw:      `data: {"type":"text","role":"summary","content":"only"}data: `,
 			wantText: []string{"only"},
+		},
+		{
+			name:     "metadata event skipped",
+			raw:      `data: {"type":"metadata","content":"ignored"}data: {"type":"text","role":"summary","content":"visible"}`,
+			wantText: []string{"visible"},
 		},
 	}
 
@@ -247,10 +252,13 @@ func TestCompletionSSE_MultiEventParsing(t *testing.T) {
 				if err := json.Unmarshal(seg, &partial); err != nil {
 					continue
 				}
-				if completion, ok := partial["completion"].(string); ok && completion != "" {
-					got = append(got, completion)
-				} else if text, ok := partial["text"].(string); ok && text != "" {
-					got = append(got, text)
+				eventType, _ := partial["type"].(string)
+				if eventType != "text" {
+					continue
+				}
+				content, _ := partial["content"].(string)
+				if content != "" {
+					got = append(got, content)
 				}
 			}
 

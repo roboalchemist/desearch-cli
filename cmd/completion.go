@@ -141,6 +141,10 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 
 	// processSSESegment parses a single SSE data segment (after stripping "data: " prefix)
 	// and extracts the completion text, writing it to the streamer or accumulating it.
+	//
+	// The Desearch API sends streaming events in the format:
+	//   {"type": "text", "role": "summary", "content": "..."}
+	// Only events with "type" == "text" carry output; others (metadata, done signals) are skipped silently.
 	processSSESegment := func(seg []byte) {
 		seg = bytes.TrimSpace(seg)
 		if len(seg) == 0 {
@@ -155,22 +159,19 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 			// Not valid JSON — skip silently (could be partial/garbled data)
 			return
 		}
+		// Only emit content for "type": "text" events; skip metadata and done signals silently.
+		eventType, _ := partial["type"].(string)
+		if eventType != "text" {
+			return
+		}
+		content, _ := partial["content"].(string)
+		if content == "" {
+			return
+		}
 		if completionJSON {
-			if completion, ok := partial["completion"].(string); ok && completion != "" {
-				completionBuilder.WriteString(completion)
-			} else if text, ok := partial["text"].(string); ok && text != "" {
-				if _, hasCompletion := partial["completion"]; !hasCompletion {
-					completionBuilder.WriteString(text)
-				}
-			}
+			completionBuilder.WriteString(content)
 		} else {
-			if completion, ok := partial["completion"].(string); ok && completion != "" {
-				streamer.WriteChunk(completion)
-			} else if text, ok := partial["text"].(string); ok && text != "" {
-				if _, hasCompletion := partial["completion"]; !hasCompletion {
-					streamer.WriteChunk(text)
-				}
-			}
+			streamer.WriteChunk(content)
 		}
 	}
 
