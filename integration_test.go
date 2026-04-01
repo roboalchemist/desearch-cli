@@ -114,7 +114,7 @@ func TestIntegration_Help(t *testing.T) {
 	}{
 		{"root help", []string{"--help"}, "CLI tool for Desearch AI"},
 		{"search help", []string{"search", "--help"}, "Search the web"},
-		{"completion help", []string{"completion", "--help"}, "AI-generated summary"},
+		{"completion help", []string{"completion", "--help"}, "Generate shell completion"},
 		{"config help", []string{"config", "--help"}, "Manage the CLI configuration"},
 		{"version help", []string{"version", "--help"}, "version"},
 		{"docs help", []string{"docs", "--help"}, "Print the full README"},
