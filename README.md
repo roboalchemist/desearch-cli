@@ -40,6 +40,13 @@ Or use [goreleaser](https://goreleaser.com/):
 goreleaser build --snapshot --clean
 ```
 
+## Homebrew Releases
+
+Releases to the private Homebrew tap require:
+1. Set `HOMEBREW_TAP_TOKEN` secret in Gitea Actions (API token with repo scope)
+2. Push a version tag: `git tag v0.1.0 && git push origin v0.1.0`
+3. GoReleaser builds and pushes the formula automatically
+
 ## Setup
 
 Get an API key at [https://console.desearch.ai](https://console.desearch.ai), then configure it:
