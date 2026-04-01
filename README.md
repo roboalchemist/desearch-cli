@@ -97,6 +97,30 @@ desearch version
 
 Show version information.
 
+### `ai`
+
+```bash
+desearch ai [query] [flags]
+```
+
+Streaming AI completion without per-source search results — streams the AI-generated response as it is generated.
+
+### `docs`
+
+```bash
+desearch docs
+```
+
+Print the embedded README documentation to stdout. Useful for offline reference.
+
+### `skill`
+
+```bash
+desearch skill [print|add]
+```
+
+Claude Code skill management. `print` outputs the SKILL.md to stdout; `add` installs the skill to `~/.claude/skills/desearch-cli/`.
+
 ## Search Flags
 
 | Flag | Type | Description |

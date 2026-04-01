@@ -79,6 +79,29 @@ desearch skill print
 desearch skill add
 ```
 
+## `desearch ai [query]`
+
+Streaming AI completion without per-source search results — streams the AI-generated response as it is generated.
+
+**Flags:**
+- `--system-message` - Optional system message to override the default
+- `--json` - Output raw JSON response
+
+**Examples:**
+```bash
+desearch ai "what is bittensor"
+desearch ai "explain transformers" --system-message "Summarize in simple terms"
+```
+
+## `desearch docs`
+
+Print the embedded README documentation to stdout. Useful for offline reference.
+
+**Example:**
+```bash
+desearch docs
+```
+
 ## Global Flags
 
 | Flag | Description |

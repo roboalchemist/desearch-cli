@@ -136,6 +136,8 @@ Returns raw per-source results without AI summarization.
 
 ## Configuration
 
+For the full configuration schema, see [docs/config.md](../../docs/config.md).
+
 ### Show Current Config
 
 ```bash
