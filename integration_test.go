@@ -16,6 +16,12 @@ import (
 	"time"
 )
 
+// shouldSkipWriteTests returns true when READONLY=1 is set,
+// skipping tests that mutate the filesystem or config.
+func shouldSkipWriteTests() bool {
+	return os.Getenv("READONLY") == "1"
+}
+
 // buildBinary builds the desearch binary for testing.
 func buildBinary(t *testing.T) string {
 	t.Helper()
@@ -298,12 +304,10 @@ func TestIntegration_FlagCombinations(t *testing.T) {
 
 	for _, flags := range combos {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			// Build fresh args slice to avoid mutating the backing array
 			args := append([]string{"search", "test"}, flags...)
-			cmd := exec.Command(binary, args...)
-
-			// Use dry-run to avoid needing API key
 			args = append(args, "--dry-run")
-			cmd = exec.Command(binary, args...)
+			cmd := exec.Command(binary, args...)
 			output, err := cmd.CombinedOutput()
 
 			if err != nil {
@@ -331,6 +335,187 @@ func TestIntegration_OutputFormats(t *testing.T) {
 		trimmed := strings.TrimSpace(string(output))
 		if !strings.HasPrefix(trimmed, "{") {
 			t.Errorf("output does not look like JSON:\n%s", output)
+		}
+	})
+}
+
+func TestIntegration_StartEndDate(t *testing.T) {
+	binary := buildBinary(t)
+
+	// Test --start-date and --end-date flags individually and together
+	tests := []struct {
+		name  string
+		flags []string
+	}{
+		{
+			name:  "start-date only",
+			flags: []string{"search", "test", "--start-date", "2024-01-01", "--dry-run"},
+		},
+		{
+			name:  "end-date only",
+			flags: []string{"search", "test", "--end-date", "2024-12-31", "--dry-run"},
+		},
+		{
+			name:  "start-date and end-date together",
+			flags: []string{"search", "test", "--start-date", "2024-01-01", "--end-date", "2024-12-31", "--dry-run"},
+		},
+		{
+			name:  "start-date with other flags",
+			flags: []string{"search", "test", "--start-date", "2024-01-01", "--tool", "web", "--count", "5", "--dry-run"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command(binary, tt.flags...)
+			output, err := cmd.CombinedOutput()
+
+			if err != nil {
+				t.Errorf("command failed: %v\nOutput: %s", err, output)
+				return
+			}
+
+			// Verify the output contains the query
+			if !strings.Contains(string(output), "test") {
+				t.Errorf("output does not contain query:\n%s", output)
+			}
+		})
+	}
+}
+
+func TestIntegration_Streaming(t *testing.T) {
+	binary := buildBinary(t)
+
+	// Test --streaming flag is accepted (will fail due to no API key, but should not crash)
+	// We use a very short timeout since it will hang waiting for a real API response
+	cmd := exec.Command(binary, "search", "test", "--streaming", "--tool", "web")
+	cmd.Timeout = 3 * time.Second
+	output, err := cmd.CombinedOutput()
+
+	// Exit code 1 = API error (expected, no key); exit code 2 = CLI arg parse error (bug)
+	exitCode := -1
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	// The command should not fail due to an unknown flag (exit code 2)
+	if exitCode == 2 {
+		t.Errorf("streaming flag was rejected as unknown:\n%s", output)
+		return
+	}
+
+	// Any other exit code is acceptable (API error, timeout, etc.) - just not a crash
+	if err != nil {
+		t.Logf("streaming command exited with: %v\nOutput: %s", err, output)
+	}
+
+	// Verify the flag was parsed (output should not contain "unknown flag" or "flag not found")
+	outputStr := string(output)
+	if strings.Contains(outputStr, "unknown flag") || strings.Contains(outputStr, "flag not found") {
+		t.Errorf("streaming flag was not recognized:\n%s", output)
+	}
+}
+
+func TestIntegration_ConfigDefaults(t *testing.T) {
+	if shouldSkipWriteTests() {
+		t.Skip("READONLY=1")
+	}
+
+	binary := buildBinary(t)
+
+	// Test --default-tool flag sets default tools in config
+	t.Run("set default-tool", func(t *testing.T) {
+		cmd := exec.Command(binary, "config", "--default-tool", "web", "--default-tool", "hackernews")
+		output, err := cmd.CombinedOutput()
+
+		// Should not crash or report unknown flag
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+			t.Errorf("default-tool flag was rejected:\n%s", output)
+			return
+		}
+
+		// Should report config saved or help text
+		outputStr := string(output)
+		if err != nil && !strings.Contains(outputStr, "Configuration saved") {
+			t.Logf("config output: %s", outputStr)
+		}
+	})
+
+	// Test --default-date-filter flag
+	t.Run("set default-date-filter", func(t *testing.T) {
+		cmd := exec.Command(binary, "config", "--default-date-filter", "PAST_WEEK")
+		output, err := cmd.CombinedOutput()
+
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+			t.Errorf("default-date-filter flag was rejected:\n%s", output)
+			return
+		}
+
+		outputStr := string(output)
+		if err != nil && !strings.Contains(outputStr, "Configuration saved") {
+			t.Logf("config output: %s", outputStr)
+		}
+	})
+
+	// Test --default-tool and --default-date-filter together
+	t.Run("set both default flags", func(t *testing.T) {
+		cmd := exec.Command(binary, "config", "--default-tool", "reddit", "--default-date-filter", "PAST_MONTH")
+		output, err := cmd.CombinedOutput()
+
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+			t.Errorf("combined default flags were rejected:\n%s", output)
+			return
+		}
+
+		outputStr := string(output)
+		if err != nil && !strings.Contains(outputStr, "Configuration saved") {
+			t.Logf("config output: %s", outputStr)
+		}
+	})
+}
+
+func TestIntegration_ConfigForce(t *testing.T) {
+	if shouldSkipWriteTests() {
+		t.Skip("READONLY=1")
+	}
+
+	binary := buildBinary(t)
+
+	// Test config clear --force flag
+	t.Run("clear with force", func(t *testing.T) {
+		cmd := exec.Command(binary, "config", "clear", "--force")
+		output, err := cmd.CombinedOutput()
+
+		// Should not crash or report unknown flag
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+			t.Errorf("force flag was rejected:\n%s", output)
+			return
+		}
+
+		// Should succeed (cleared or "no config to clear" is both fine)
+		outputStr := string(output)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 {
+			if !strings.Contains(outputStr, "No config file to clear") {
+				t.Errorf("unexpected output for config clear --force:\n%s", outputStr)
+			}
+		}
+	})
+
+	// Test config clear -f (short form)
+	t.Run("clear with -f short flag", func(t *testing.T) {
+		cmd := exec.Command(binary, "config", "clear", "-f")
+		output, err := cmd.CombinedOutput()
+
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+			t.Errorf("-f flag was rejected:\n%s", output)
+			return
+		}
+
+		outputStr := string(output)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 {
+			if !strings.Contains(outputStr, "No config file to clear") {
+				t.Errorf("unexpected output for config clear -f:\n%s", outputStr)
+			}
 		}
 	})
 }

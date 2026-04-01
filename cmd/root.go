@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/roboalchemist/desearch-cli/pkg/auth"
+	"github.com/roboalchemist/desearch-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -49,8 +50,13 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 		// Load config before any subcommand runs
 		_, err := auth.LoadConfig()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-			// Continue anyway - flags may override the missing config
+			if errors.IsSystem(err) {
+				fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+				os.Exit(3)
+			}
+			// For non-system errors (e.g. parse errors on an existing file),
+			// print a warning and continue - flags may override the missing config.
+			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
 		}
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

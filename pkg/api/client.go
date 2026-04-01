@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"sort"
 	"time"
+
+	"github.com/roboalchemist/desearch-cli/pkg/errors"
 )
 
 // BaseURL is the Desearch API base URL.
@@ -357,7 +359,7 @@ func (c *Client) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		return nil, errors.Wrap("failed to send request: " + err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -400,7 +402,7 @@ func (c *Client) SearchStream(ctx context.Context, req *SearchRequest) (*bufio.R
 
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		return nil, errors.Wrap("failed to send request: " + err.Error())
 	}
 
 	if resp.StatusCode != http.StatusOK {

@@ -379,6 +379,42 @@ func (f *PlaintextFormatter) writeArxivResults(sb *strings.Builder, header strin
 	}
 }
 
+// StreamingFormatter writes streamed completion chunks directly to stdout.
+// Unlike other formatters it does not buffer output, since chunks must be
+// printed immediately for a responsive streaming experience.
+type StreamingFormatter struct {
+	JSON bool // if true, outputs accumulated text as a JSON object at the end
+}
+
+// WriteChunk prints a completion token to stdout immediately, with no extra
+// whitespace. It returns the text appended to the internal buffer.
+func (f *StreamingFormatter) WriteChunk(chunk string) {
+	fmt.Print(chunk)
+	os.Stdout.Sync()
+}
+
+// Finalize outputs the accumulated text as a final newline (plaintext) or as
+// a JSON object (JSON mode). It returns the string written so callers can
+// include it in combined output if needed.
+func (f *StreamingFormatter) Finalize(query, text string) string {
+	if f.JSON {
+		output := map[string]string{
+			"query":      query,
+			"completion": text,
+		}
+		data, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			// Fall back to plaintext on marshal error
+			fmt.Println()
+			return ""
+		}
+		fmt.Println(string(data))
+		return string(data)
+	}
+	fmt.Println()
+	return ""
+}
+
 // FilterJSONFields filters a JSON object to only include the specified top-level fields.
 // fields is a comma-separated list of field names (JSON keys).
 // Returns the filtered JSON with the same indentation as the input.

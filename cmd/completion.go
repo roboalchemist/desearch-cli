@@ -11,6 +11,7 @@ import (
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
 	"github.com/roboalchemist/desearch-cli/pkg/auth"
+	"github.com/roboalchemist/desearch-cli/pkg/output"
 	"github.com/spf13/cobra"
 )
 
@@ -126,6 +127,7 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 
 	// When --json flag is set, accumulate completion and output at end
 	var completionBuilder strings.Builder
+	streamer := &output.StreamingFormatter{JSON: completionJSON}
 
 	// Stream completion text chunks as they arrive
 	for {
@@ -158,16 +160,13 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 				if err := json.Unmarshal(chunk, &partial); err == nil {
 					// Look for completion field
 					if completion, ok := partial["completion"].(string); ok && completion != "" {
-						// Print without extra newline, flush immediately
-						fmt.Print(completion)
-						os.Stdout.Sync()
+						streamer.WriteChunk(completion)
 					}
 					// Also check for text field which may contain completion chunks
 					if text, ok := partial["text"].(string); ok && text != "" {
 						// Only print if completion is not set or empty
 						if _, hasCompletion := partial["completion"]; !hasCompletion {
-							fmt.Print(text)
-							os.Stdout.Sync()
+							streamer.WriteChunk(text)
 						}
 					}
 				} else {
@@ -176,8 +175,7 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 					if trimmed != "" {
 						// Check if it might be plain text completion
 						if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
-							fmt.Print(trimmed)
-							os.Stdout.Sync()
+							streamer.WriteChunk(trimmed)
 						}
 					}
 				}
@@ -197,21 +195,8 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Print final newline when done
-	if completionJSON {
-		// Output structured JSON at the end
-		output := map[string]string{
-			"query":      query,
-			"completion": completionBuilder.String(),
-		}
-		data, err := json.MarshalIndent(output, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-	} else {
-		fmt.Println()
-	}
+	// Print final newline when done (or JSON object in --json mode)
+	streamer.Finalize(query, completionBuilder.String())
 
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/roboalchemist/desearch-cli/pkg/errors"
 )
 
 // Config holds the application configuration.
@@ -42,7 +43,8 @@ func LoadConfig() (*Config, error) {
 		if os.IsNotExist(err) {
 			return &Config{}, nil
 		}
-		return nil, fmt.Errorf("reading config file: %w", err)
+		// Any other error (permission denied, I/O failure) is a system error.
+		return nil, errors.Wrap("reading config file: " + err.Error())
 	}
 
 	var cfg Config
