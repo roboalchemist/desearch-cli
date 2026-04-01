@@ -17,10 +17,11 @@ type Formatter interface {
 
 // OutputFlags holds the flags that control output formatting.
 type OutputFlags struct {
-	JSON      bool
-	NoAI      bool
-	Tool      string // empty means all tools
-	Plaintext bool
+	JSON        bool
+	NoAI        bool
+	Tool        string // empty means all tools
+	Plaintext   bool
+	FilterFields string // comma-separated top-level field names to include in JSON output
 }
 
 // NewFormatter returns the appropriate formatter based on flags.
@@ -37,11 +38,19 @@ func NewFormatter(flags OutputFlags) Formatter {
 // JSONFormatter outputs raw JSON with json.MarshalIndent.
 type JSONFormatter struct{}
 
-// Format returns the JSON representation of the search response.
+// Format returns the JSON representation of the search response,
+// optionally filtered to only include the top-level fields specified.
 func (f *JSONFormatter) Format(resp *api.SearchResponse) string {
 	data, err := resp.MarshalJSON()
 	if err != nil {
 		return fmt.Sprintf(`{"error": "failed to marshal response: %v"}`, err)
+	}
+	if f.FilterFields != "" {
+		filtered, err := FilterJSONFields(data, f.FilterFields)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to filter fields: %v"}`, err)
+		}
+		return string(filtered)
 	}
 	return string(data)
 }
