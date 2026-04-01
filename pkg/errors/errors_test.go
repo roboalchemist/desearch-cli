@@ -52,3 +52,50 @@ func TestWrapF(t *testing.T) {
 		t.Errorf("got %q, want %q", err.Error(), "value=42")
 	}
 }
+
+func TestUsageError(t *testing.T) {
+	inner := errors.New("unknown flag --foo")
+	err := WrapUsage(inner)
+	if err == nil {
+		t.Fatal("expected non-nil error")
+	}
+	if err.Error() != "unknown flag --foo" {
+		t.Errorf("got %q, want %q", err.Error(), "unknown flag --foo")
+	}
+	if !IsUsage(err) {
+		t.Error("expected IsUsage to return true for wrapped error")
+	}
+}
+
+func TestIsUsage_NonUsage(t *testing.T) {
+	err := errors.New("plain error")
+	if IsUsage(err) {
+		t.Error("expected IsUsage to return false for plain error")
+	}
+}
+
+func TestIsUsage_Nil(t *testing.T) {
+	if IsUsage(nil) {
+		t.Error("expected IsUsage to return false for nil")
+	}
+}
+
+func TestWrapUsage_Nil(t *testing.T) {
+	if WrapUsage(nil) != nil {
+		t.Error("expected WrapUsage(nil) to return nil")
+	}
+}
+
+func TestIsUsage_NotSystem(t *testing.T) {
+	sysErr := Wrap("system error")
+	if IsUsage(sysErr) {
+		t.Error("expected IsUsage to return false for SystemError")
+	}
+}
+
+func TestIsSystem_NotUsage(t *testing.T) {
+	usageErr := WrapUsage(errors.New("bad flag"))
+	if IsSystem(usageErr) {
+		t.Error("expected IsSystem to return false for UsageError")
+	}
+}

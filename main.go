@@ -13,6 +13,9 @@ func main() {
 		if errors.IsSystem(err) {
 			os.Exit(3)
 		}
+		if errors.IsUsage(err) {
+			os.Exit(2)
+		}
 		if cmd.GetJSONOut() {
 			fmt.Fprintf(os.Stderr, "{\"error\": %q}\n", err.Error())
 		} else {
