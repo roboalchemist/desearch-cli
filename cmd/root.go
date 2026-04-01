@@ -29,6 +29,14 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Version:       version,
+	// Args wraps the default legacyArgs validator so that unknown subcommand
+	// errors are tagged as UsageErrors (exit code 2) rather than generic errors.
+	Args: func(cmd *cobra.Command, args []string) error {
+		if cmd.HasSubCommands() && !cmd.HasParent() && len(args) > 0 {
+			return errors.WrapUsage(fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath()))
+		}
+		return nil
+	},
 	Long: `CLI tool for Desearch AI - a contextual AI search engine that aggregates results across multiple sources.
 
 ENVIRONMENT
@@ -115,13 +123,8 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 		if dispatchedToSubcmd {
 			return nil
 		}
-		// Reached here only when PreRunE returned nil without dispatching.
-		// This means args were provided but none matched a subcommand name.
-		if len(args) > 0 {
-			cmd.Printf("Error: unknown command %q\n\n", args[0])
-		}
-		// pflag.ErrHelp signals to Cobra to show help/usage.
-		return pflag.ErrHelp
+		// Show help when invoked with no args (or after dispatching).
+		return cmd.Help()
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Skip API key check for certain commands that don't need auth
@@ -227,6 +230,11 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Show verbose progress output to stderr")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "q", false, "Suppress stderr output except errors")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "silent", "", false, "Suppress stderr output except errors (alias for --quiet)")
+
+	// Tag flag parse errors as UsageErrors so main.go can exit with code 2.
+	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return errors.WrapUsage(err)
+	})
 
 	// GNU standard: --help should end with "Report bugs" footer
 	rootCmd.SetHelpTemplate(rootCmd.HelpTemplate() + "\nReport bugs at: https://gitea.roboalch.com/roboalchemist/desearch-cli/issues\n")
