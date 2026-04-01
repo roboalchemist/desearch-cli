@@ -130,6 +130,49 @@ func TestSaveConfig(t *testing.T) {
 		assert.Equal(t, 50, loaded.DefaultCount)
 	})
 
+	t.Run("returns error when directory cannot be created", func(t *testing.T) {
+		// Use a path that exists as a read-only file, not a directory,
+		// so os.MkdirAll fails.
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Create a file at the config directory path so MkdirAll fails
+		readonlyFile := filepath.Join(tmpDir, "desearch-cli")
+		f, err := os.Create(readonlyFile)
+		require.NoError(t, err)
+		f.Close()
+
+		// Make the parent unreadable so MkdirAll can't traverse
+		os.Chmod(tmpDir, 0000)
+
+		cfg := &Config{APIKey: "some-key"}
+		err = SaveConfig(cfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "creating config directory")
+
+		// Restore so TempDir cleanup can proceed
+		os.Chmod(tmpDir, 0700)
+		os.Remove(readonlyFile)
+	})
+
+	t.Run("returns error when file cannot be written", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Pre-create the directory with no write permission
+		configDir := filepath.Join(tmpDir, "desearch-cli")
+		err := os.MkdirAll(configDir, 0555) // read-only directory
+		require.NoError(t, err)
+
+		cfg := &Config{APIKey: "some-key"}
+		err = SaveConfig(cfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "writing config file")
+
+		// Restore permissions so TempDir cleanup can proceed
+		os.Chmod(configDir, 0700)
+	})
+
 	t.Run("overwrites existing config", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		os.Setenv("XDG_CONFIG_HOME", tmpDir)
@@ -174,6 +217,40 @@ func TestGetAPIKey(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "my-api-key", GetAPIKey())
+	})
+
+	t.Run("env var takes precedence over config file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Write config file with one API key
+		cfg := &Config{APIKey: "config-file-key"}
+		err := SaveConfig(cfg)
+		require.NoError(t, err)
+
+		// Set env var with different key
+		os.Setenv("DESEARCH_API_KEY", "env-override-key")
+
+		// Env var should win
+		assert.Equal(t, "env-override-key", GetAPIKey())
+
+		os.Unsetenv("DESEARCH_API_KEY")
+	})
+
+	t.Run("returns empty string when LoadConfig errors", func(t *testing.T) {
+		// XDG_CONFIG_HOME points to a non-existent path on a read-only root
+		// so LoadConfig returns an error. GetAPIKey should gracefully return "".
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Remove all permissions from tmpDir so os.ReadFile fails with permission denied
+		os.Chmod(tmpDir, 0000)
+
+		result := GetAPIKey()
+		assert.Equal(t, "", result)
+
+		// Restore permissions so TempDir cleanup can proceed
+		os.Chmod(tmpDir, 0700)
 	})
 }
 

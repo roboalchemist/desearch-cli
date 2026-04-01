@@ -4,11 +4,23 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/itchyny/gojq"
 	"github.com/roboalchemist/desearch-cli/pkg/api"
 )
+
+func init() {
+	// Respect the NO_COLOR environment variable (https://no-color.org/).
+	// The formatter currently uses plain text (strings.Builder) with no ANSI color
+	// codes, so NO_COLOR is trivially satisfied. This init() is here to ensure
+	// correct behavior if color support is added in the future via fatih/color.
+	// When that library is imported, set color.NoColor = true here.
+	if os.Getenv("NO_COLOR") != "" {
+		// color.NoColor = true  // uncomment when fatih/color is imported
+	}
+}
 
 // Formatter defines an interface for formatting search responses.
 type Formatter interface {
@@ -27,7 +39,7 @@ type OutputFlags struct {
 // NewFormatter returns the appropriate formatter based on flags.
 func NewFormatter(flags OutputFlags) Formatter {
 	if flags.JSON {
-		return &JSONFormatter{}
+		return &JSONFormatter{FilterFields: flags.FilterFields}
 	}
 	if flags.Plaintext {
 		return &PlaintextFormatter{NoAI: flags.NoAI, Tool: flags.Tool}
@@ -36,7 +48,9 @@ func NewFormatter(flags OutputFlags) Formatter {
 }
 
 // JSONFormatter outputs raw JSON with json.MarshalIndent.
-type JSONFormatter struct{}
+type JSONFormatter struct {
+	FilterFields string // comma-separated top-level field names to include
+}
 
 // Format returns the JSON representation of the search response,
 // optionally filtered to only include the top-level fields specified.
@@ -363,6 +377,33 @@ func (f *PlaintextFormatter) writeArxivResults(sb *strings.Builder, header strin
 	for _, r := range results {
 		sb.WriteString(fmt.Sprintf("%s\t%s\t%s\n", r.Title, r.Link, r.Snippet))
 	}
+}
+
+// FilterJSONFields filters a JSON object to only include the specified top-level fields.
+// fields is a comma-separated list of field names (JSON keys).
+// Returns the filtered JSON with the same indentation as the input.
+func FilterJSONFields(data []byte, fields string) ([]byte, error) {
+	var v map[string]interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	// Parse the comma-separated field list
+	requested := strings.Split(fields, ",")
+	allowed := make(map[string]bool, len(requested))
+	for _, f := range requested {
+		allowed[strings.TrimSpace(f)] = true
+	}
+
+	// Build a new map with only the requested fields, preserving original keys
+	filtered := make(map[string]interface{})
+	for k, v := range v {
+		if allowed[k] {
+			filtered[k] = v
+		}
+	}
+
+	return json.MarshalIndent(filtered, "", "  ")
 }
 
 // EvaluateJQ runs a jq expression on the given JSON bytes and returns the filtered result.

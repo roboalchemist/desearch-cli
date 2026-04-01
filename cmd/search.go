@@ -26,6 +26,7 @@ var (
 	flagPlaintext  bool
 	flagDryRun     bool
 	flagJQ         string
+	flagFields     string
 )
 
 func getAPIKey() string {
@@ -75,6 +76,14 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	if flagJQ != "" && !jsonOut && !flagNoAI {
 		return fmt.Errorf("--jq requires --json or --no-ai to be set")
 	}
+	// Validate --fields requires --json
+	if flagFields != "" && !jsonOut {
+		return fmt.Errorf("--fields requires --json to be set")
+	}
+	// Validate --fields cannot be used with --dry-run (no response to filter)
+	if flagFields != "" && flagDryRun {
+		return fmt.Errorf("--fields cannot be used with --dry-run")
+	}
 
 	if flagVerbose && !flagQuiet {
 		fmt.Fprintf(os.Stderr, "Searching %d source(s)...\n", len(flagTool))
@@ -123,9 +132,10 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	}
 
 	formatter := output.NewFormatter(output.OutputFlags{
-		JSON:      jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
-		NoAI:      flagNoAI,
-		Plaintext: flagPlaintext,
+		JSON:        jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
+		NoAI:        flagNoAI,
+		Plaintext:   flagPlaintext,
+		FilterFields: flagFields,
 	})
 	formatted := formatter.Format(resp)
 	if flagJQ != "" {
@@ -195,6 +205,7 @@ func init() {
 	searchCmd.Flags().BoolVarP(&flagPlaintext, "plaintext", "p", false, "Output as tab-separated values (title\\turl\\tsnippet)")
 	searchCmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Build request and print as JSON without calling the API")
 	searchCmd.Flags().StringVar(&flagJQ, "jq", "", "jq expression to filter JSON output (requires --json or --no-ai)")
+	searchCmd.Flags().StringVar(&flagFields, "fields", "", "Comma-separated top-level JSON fields to include in output (requires --json)")
 
 	searchCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		cmd.Parent().HelpFunc()(cmd, args)
