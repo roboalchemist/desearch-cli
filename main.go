@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/roboalchemist/desearch-cli/cmd"
@@ -11,6 +12,11 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		if errors.IsSystem(err) {
 			os.Exit(3)
+		}
+		if cmd.GetJSONOut() {
+			fmt.Fprintf(os.Stderr, "{\"error\": %q}\n", err.Error())
+		} else {
+			fmt.Fprintln(os.Stderr, err)
 		}
 		os.Exit(1)
 	}

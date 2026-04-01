@@ -2,14 +2,13 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/roboalchemist/desearch-cli/cmd"
 	"github.com/spf13/cobra/doc"
 )
 
 func main() {
-	if err := doc.GenMan(cmd.RootCmd(), nil, os.Stdout); err != nil {
+	if err := doc.GenManTree(cmd.RootCmd(), nil, "docs/"); err != nil {
 		log.Fatal(err)
 	}
 }

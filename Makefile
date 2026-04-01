@@ -43,7 +43,7 @@ test-integration-live:
 		-DESEARCH_API_KEY=$$DESEARCH_API_KEY
 
 man:
-	go run ./cmd/gendocs > docs/desearch.1
+	go run ./cmd/gendocs
 
 install:
 	sudo install -m 755 desearch /usr/local/bin/

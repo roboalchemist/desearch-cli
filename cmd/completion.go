@@ -56,24 +56,27 @@ var completionZshCmd = &cobra.Command{
 }
 
 var completionFishCmd = &cobra.Command{
-	Use:   "fish",
-	Short: "Generate Fish completion script",
+	Use:     "fish",
+	Short:   "Generate Fish completion script",
+	Example: `desearch completion fish`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return rootCmd.GenFishCompletion(os.Stdout, true)
 	},
 }
 
 var completionPowerShellCmd = &cobra.Command{
-	Use:   "powershell",
-	Short: "Generate PowerShell completion script",
+	Use:     "powershell",
+	Short:   "Generate PowerShell completion script",
+	Example: `desearch completion powershell`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return rootCmd.GenPowerShellCompletion(os.Stdout)
 	},
 }
 
 var completionCmd = &cobra.Command{
-	Use:   "completion",
-	Short: "Generate shell completion scripts",
+	Use:     "completion",
+	Short:   "Generate shell completion scripts",
+	Example: `desearch completion bash`,
 }
 
 func init() {
