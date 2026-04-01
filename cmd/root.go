@@ -32,6 +32,8 @@ var rootCmd = &cobra.Command{
 
 ENVIRONMENT
   DESEARCH_API_KEY  API key for authentication (overrides config file)
+  XDG_CONFIG_HOME   Config directory base (default ~/.config)
+  NO_COLOR          Disable colored output when set to any non-empty value
 
 FILES
   ~/.config/desearch-cli/config.toml  Configuration file (mode 0600)
@@ -127,7 +129,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "Output in JSON format")
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "V", false, "Print version")
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Show verbose progress output to stderr")
-	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "", false, "Suppress stderr output except errors")
+	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "q", false, "Suppress stderr output except errors")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "silent", "", false, "Suppress stderr output except errors (alias for --quiet)")
 
 	// GNU standard: --help should end with "Report bugs" footer

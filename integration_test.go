@@ -138,6 +138,22 @@ func TestIntegration_Help(t *testing.T) {
 	}
 }
 
+func TestIntegration_AICommand(t *testing.T) {
+	binary := buildBinary(t)
+
+	cmd := exec.Command(binary, "ai", "--help")
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Errorf("ai --help failed: %v\nOutput: %s", err, output)
+		return
+	}
+
+	if !strings.Contains(string(output), "Get an AI-generated summary") {
+		t.Errorf("ai --help output does not contain expected description:\n%s", output)
+	}
+}
+
 func TestIntegration_Version(t *testing.T) {
 	binary := buildBinary(t)
 
