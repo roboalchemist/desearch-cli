@@ -60,8 +60,8 @@ To get started, you need an API key. Sign up at https://console.desearch.ai`,
 		}
 
 		// Validate API key is available (either from config or --api-key flag)
-		// Skip check if --dry-run flag is set
-		if cmd.Flags().Changed("dry-run") {
+		// Skip check if --dry-run or --fields flag is set
+		if cmd.Flags().Changed("dry-run") || cmd.Flags().Changed("fields") {
 			return
 		}
 		key := apiKey

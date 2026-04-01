@@ -107,6 +107,56 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(alias, "", "  ")
 }
 
+// UnmarshalJSON handles both map and sorted-array formats for MinerLinkScores.
+func (r *SearchResponse) UnmarshalJSON(data []byte) error {
+	// Use an alias type that accepts MinerLinkScores as an array (produced by MarshalJSON).
+	type aliasResponse struct {
+		Search           []WebResult        `json:"search,omitempty"`
+		HackerNewsSearch []HackerNewsResult `json:"hacker_news_search,omitempty"`
+		RedditSearch     []RedditResult     `json:"reddit_search,omitempty"`
+		YoutubeSearch    []YoutubeResult    `json:"youtube_search,omitempty"`
+		Tweets           []TweetResult      `json:"tweets,omitempty"`
+		WikipediaSearch  []WikipediaResult  `json:"wikipedia_search,omitempty"`
+		ArxivSearch      []ArxivResult      `json:"arxiv_search,omitempty"`
+		Text             string             `json:"text,omitempty"`
+		MinerLinkScores  interface{}        `json:"miner_link_scores,omitempty"`
+		Completion       string             `json:"completion,omitempty"`
+	}
+
+	var a aliasResponse
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+
+	r.Search = a.Search
+	r.HackerNewsSearch = a.HackerNewsSearch
+	r.RedditSearch = a.RedditSearch
+	r.YoutubeSearch = a.YoutubeSearch
+	r.Tweets = a.Tweets
+	r.WikipediaSearch = a.WikipediaSearch
+	r.ArxivSearch = a.ArxivSearch
+	r.Text = a.Text
+	r.Completion = a.Completion
+
+	switch v := a.MinerLinkScores.(type) {
+	case map[string]string:
+		r.MinerLinkScores = v
+	case []interface{}:
+		r.MinerLinkScores = make(map[string]string)
+		for _, item := range v {
+			if m, ok := item.(map[string]interface{}); ok {
+				if k, ok := m["key"].(string); ok {
+					if val, ok := m["value"].(string); ok {
+						r.MinerLinkScores[k] = val
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // WebResult represents a web search result.
 type WebResult struct {
 	Title   string `json:"title"`
@@ -313,6 +363,11 @@ func (c *Client) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
+		// Try to decode as JSON for a structured error message.
+		var errResp struct{ Detail string }
+		if json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Detail != "" {
+			return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, errResp.Detail)
+		}
 		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 

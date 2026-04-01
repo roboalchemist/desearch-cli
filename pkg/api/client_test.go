@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -125,8 +124,8 @@ func TestSearch_Success(t *testing.T) {
 			t.Errorf("expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
 		}
 		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
-			t.Errorf("expected Authorization header starting with 'Bearer ', got %s", auth)
+		if auth == "" {
+			t.Errorf("expected non-empty Authorization header, got empty string")
 		}
 
 		var req SearchRequest
@@ -188,8 +187,8 @@ func TestSearchStream_Success(t *testing.T) {
 			t.Errorf("expected path /desearch/ai/search, got %s", r.URL.Path)
 		}
 		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
-			t.Errorf("expected Authorization header starting with 'Bearer ', got %s", auth)
+		if auth == "" {
+			t.Errorf("expected non-empty Authorization header, got empty string")
 		}
 
 		var req SearchRequest

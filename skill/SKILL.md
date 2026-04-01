@@ -171,15 +171,22 @@ desearch config clear
 Task: Quick web search
 
 ```bash
-desearch "weather in San Francisco"
+desearch "why use golang"
 ```
 
 Output:
 ```
-Searching 1 source(s)...
-[web] Current weather in San Francisco:
-- Weather.com: 72°F, partly cloudy
-- Wikipedia: San Francisco has a Mediterranean climate...
+=== WEB ===
+[Why Go? : r/golang - Reddit](https://www.reddit.com/r/golang/comments/11c9wv1/why_go/)
+  Go scales easily to millions of network connections per box and allows for better utilization of hardware...
+
+[What's so great about Go? - Stack Overflow - StackOverflow blog](https://stackoverflow.blog/2020/11/02/go-golang-learn-fast-programming-languages/)
+  Go is compilable on nearly any machine, so you can use it to create a full webapp or a tool...
+
+[Why Go - The Go Programming Language](https://go.dev/solutions/)
+  Common problems companies solve with Go. Use Cases. Stories about how and why companies use Go.
+
+<!-- (additional results and AI summary omitted for brevity) -->
 ```
 
 </example>
