@@ -105,6 +105,7 @@ func isNoAuthCommand(cmd *cobra.Command) bool {
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
 	rootCmd.Version = version
+	rootCmd.SetVersionTemplate("desearch {{.Version}}\nCopyright 2026 RoboAlchemist\n")
 	return rootCmd.Execute()
 }
 

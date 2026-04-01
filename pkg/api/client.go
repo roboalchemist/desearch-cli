@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -58,6 +59,52 @@ type SearchResponse struct {
 	Text             string             `json:"text,omitempty"`
 	MinerLinkScores  map[string]string  `json:"miner_link_scores,omitempty"`
 	Completion       string             `json:"completion,omitempty"`
+}
+
+// MarshalJSON sorts MinerLinkScores map keys for deterministic JSON output.
+func (r SearchResponse) MarshalJSON() ([]byte, error) {
+	// Sort MinerLinkScores keys
+	var sortedScores []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	for k, v := range r.MinerLinkScores {
+		sortedScores = append(sortedScores, struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}{k, v})
+	}
+	sort.Slice(sortedScores, func(i, j int) bool {
+		return sortedScores[i].Key < sortedScores[j].Key
+	})
+
+	alias := struct {
+		Search           []WebResult        `json:"search,omitempty"`
+		HackerNewsSearch []HackerNewsResult `json:"hacker_news_search,omitempty"`
+		RedditSearch     []RedditResult     `json:"reddit_search,omitempty"`
+		YoutubeSearch    []YoutubeResult    `json:"youtube_search,omitempty"`
+		Tweets           []TweetResult      `json:"tweets,omitempty"`
+		WikipediaSearch  []WikipediaResult  `json:"wikipedia_search,omitempty"`
+		ArxivSearch      []ArxivResult      `json:"arxiv_search,omitempty"`
+		Text             string             `json:"text,omitempty"`
+		MinerLinkScores  []struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"miner_link_scores,omitempty"`
+		Completion string `json:"completion,omitempty"`
+	}{
+		Search:           r.Search,
+		HackerNewsSearch: r.HackerNewsSearch,
+		RedditSearch:     r.RedditSearch,
+		YoutubeSearch:    r.YoutubeSearch,
+		Tweets:           r.Tweets,
+		WikipediaSearch:  r.WikipediaSearch,
+		ArxivSearch:      r.ArxivSearch,
+		Text:             r.Text,
+		MinerLinkScores:  sortedScores,
+		Completion:       r.Completion,
+	}
+	return json.MarshalIndent(alias, "", "  ")
 }
 
 // WebResult represents a web search result.
@@ -256,7 +303,7 @@ func (c *Client) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+	httpReq.Header.Set("Authorization", c.APIKey)
 
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
@@ -294,7 +341,7 @@ func (c *Client) SearchStream(ctx context.Context, req *SearchRequest) (*bufio.R
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+	httpReq.Header.Set("Authorization", c.APIKey)
 
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {

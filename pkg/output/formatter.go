@@ -39,7 +39,7 @@ type JSONFormatter struct{}
 
 // Format returns the JSON representation of the search response.
 func (f *JSONFormatter) Format(resp *api.SearchResponse) string {
-	data, err := json.MarshalIndent(resp, "", "  ")
+	data, err := resp.MarshalJSON()
 	if err != nil {
 		return fmt.Sprintf(`{"error": "failed to marshal response: %v"}`, err)
 	}

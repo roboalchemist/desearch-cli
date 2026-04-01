@@ -20,6 +20,8 @@ build:
 test: build
 	./desearch --help
 	./desearch version
+	./desearch docs > /dev/null
+	./desearch skill print > /dev/null
 	./desearch completion --help
 	./desearch config --help
 
