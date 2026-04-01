@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -138,7 +139,45 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 	var completionBuilder strings.Builder
 	streamer := &output.StreamingFormatter{JSON: completionJSON}
 
-	// Stream completion text chunks as they arrive
+	// processSSESegment parses a single SSE data segment (after stripping "data: " prefix)
+	// and extracts the completion text, writing it to the streamer or accumulating it.
+	processSSESegment := func(seg []byte) {
+		seg = bytes.TrimSpace(seg)
+		if len(seg) == 0 {
+			return
+		}
+		// Skip the SSE stream-end sentinel
+		if string(seg) == "[DONE]" {
+			return
+		}
+		var partial map[string]interface{}
+		if err := json.Unmarshal(seg, &partial); err != nil {
+			// Not valid JSON — skip silently (could be partial/garbled data)
+			return
+		}
+		if completionJSON {
+			if completion, ok := partial["completion"].(string); ok && completion != "" {
+				completionBuilder.WriteString(completion)
+			} else if text, ok := partial["text"].(string); ok && text != "" {
+				if _, hasCompletion := partial["completion"]; !hasCompletion {
+					completionBuilder.WriteString(text)
+				}
+			}
+		} else {
+			if completion, ok := partial["completion"].(string); ok && completion != "" {
+				streamer.WriteChunk(completion)
+			} else if text, ok := partial["text"].(string); ok && text != "" {
+				if _, hasCompletion := partial["completion"]; !hasCompletion {
+					streamer.WriteChunk(text)
+				}
+			}
+		}
+	}
+
+	// Stream completion text chunks as they arrive.
+	// The Desearch API may send multiple SSE events on a single line without
+	// newline separators (e.g. `data: {...}data: {...}`). We split each read
+	// on "data: " boundaries so every event is parsed independently.
 	for {
 		select {
 		case <-ctx.Done():
@@ -147,47 +186,12 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		default:
 		}
 
-		chunk, err := reader.ReadBytes('\n')
-		if len(chunk) > 0 {
-			if completionJSON {
-				// Accumulate completion text from JSON chunks
-				var partial map[string]interface{}
-				if err := json.Unmarshal(chunk, &partial); err == nil {
-					if completion, ok := partial["completion"].(string); ok && completion != "" {
-						completionBuilder.WriteString(completion)
-					}
-					if text, ok := partial["text"].(string); ok && text != "" {
-						if _, hasCompletion := partial["completion"]; !hasCompletion {
-							completionBuilder.WriteString(text)
-						}
-					}
-				}
-			} else {
-				// Try to parse as a partial response to extract completion chunks
-				// The stream may send JSON objects with completion text
-				var partial map[string]interface{}
-				if err := json.Unmarshal(chunk, &partial); err == nil {
-					// Look for completion field
-					if completion, ok := partial["completion"].(string); ok && completion != "" {
-						streamer.WriteChunk(completion)
-					}
-					// Also check for text field which may contain completion chunks
-					if text, ok := partial["text"].(string); ok && text != "" {
-						// Only print if completion is not set or empty
-						if _, hasCompletion := partial["completion"]; !hasCompletion {
-							streamer.WriteChunk(text)
-						}
-					}
-				} else {
-					// Not JSON - try to print raw chunk if it looks like text
-					trimmed := strings.TrimSpace(string(chunk))
-					if trimmed != "" {
-						// Check if it might be plain text completion
-						if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
-							streamer.WriteChunk(trimmed)
-						}
-					}
-				}
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			// Split on "data: " to handle multiple events packed on one line.
+			segments := bytes.Split(line, []byte("data: "))
+			for _, seg := range segments {
+				processSSESegment(seg)
 			}
 		}
 

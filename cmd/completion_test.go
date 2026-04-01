@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+
 func resetCompletionFlags() {
 	completionSystemMessage = ""
 	completionJSON = false
@@ -193,6 +194,73 @@ func TestCompletionResponse_Parse(t *testing.T) {
 
 			if tt.wantOutput {
 				t.Errorf("expected output but got none for data: %s", tt.data)
+			}
+		})
+	}
+}
+
+func TestCompletionSSE_MultiEventParsing(t *testing.T) {
+	// Verify that when multiple SSE events are packed on one line (no newline
+	// between them), splitting on "data: " correctly extracts each JSON segment.
+	tests := []struct {
+		name     string
+		raw      string
+		wantText []string
+	}{
+		{
+			name:     "single event with prefix",
+			raw:      `data: {"completion":"hello"}`,
+			wantText: []string{"hello"},
+		},
+		{
+			name:     "two events packed on one line",
+			raw:      `data: {"completion":"foo"}data: {"completion":"bar"}`,
+			wantText: []string{"foo", "bar"},
+		},
+		{
+			name:     "DONE sentinel ignored",
+			raw:      `data: {"completion":"text"}data: [DONE]`,
+			wantText: []string{"text"},
+		},
+		{
+			name:     "empty segment skipped",
+			raw:      `data: {"completion":"only"}data: `,
+			wantText: []string{"only"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []string
+
+			// Simulate the splitting logic from runCompletion
+			segments := bytes.Split([]byte(tt.raw), []byte("data: "))
+			for _, seg := range segments {
+				seg = bytes.TrimSpace(seg)
+				if len(seg) == 0 {
+					continue
+				}
+				if string(seg) == "[DONE]" {
+					continue
+				}
+				var partial map[string]interface{}
+				if err := json.Unmarshal(seg, &partial); err != nil {
+					continue
+				}
+				if completion, ok := partial["completion"].(string); ok && completion != "" {
+					got = append(got, completion)
+				} else if text, ok := partial["text"].(string); ok && text != "" {
+					got = append(got, text)
+				}
+			}
+
+			if len(got) != len(tt.wantText) {
+				t.Fatalf("got %d segments %v, want %d segments %v", len(got), got, len(tt.wantText), tt.wantText)
+			}
+			for i, w := range tt.wantText {
+				if got[i] != w {
+					t.Errorf("segment[%d] = %q, want %q", i, got[i], w)
+				}
 			}
 		})
 	}
