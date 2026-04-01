@@ -13,7 +13,6 @@ var (
 	cfgFile     string
 	apiKey      string
 	jsonOut     bool
-	versionFlag bool
 	flagVerbose bool
 	flagQuiet   bool
 )

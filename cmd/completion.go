@@ -38,16 +38,18 @@ Example:
 
 // Shell completion commands
 var completionBashCmd = &cobra.Command{
-	Use:   "bash",
-	Short: "Generate Bash completion script",
+	Use:     "bash",
+	Short:   "Generate Bash completion script",
+	Example: `desearch completion bash`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return rootCmd.GenBashCompletion(os.Stdout)
 	},
 }
 
 var completionZshCmd = &cobra.Command{
-	Use:   "zsh",
-	Short: "Generate Zsh completion script",
+	Use:     "zsh",
+	Short:   "Generate Zsh completion script",
+	Example: `desearch completion zsh`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return rootCmd.GenZshCompletion(os.Stdout)
 	},
