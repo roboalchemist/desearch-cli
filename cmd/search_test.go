@@ -34,6 +34,8 @@ func resetFlags() {
 	flagDryRun = false
 	flagJQ = ""
 	flagFields = ""
+	flagStdin = false
+	jsonOut = false
 }
 
 func TestBuildSearchRequest(t *testing.T) {
@@ -733,6 +735,91 @@ func TestRunSearchNormal_EmptyResponse(t *testing.T) {
 	err := runSearchNormal(cmd, client, req)
 	if err != nil {
 		t.Fatalf("runSearchNormal failed: %v", err)
+	}
+}
+
+func TestRunSearch_StdinMode(t *testing.T) {
+	// Test stdin mode reads from stdin pipe
+	origAPIKey := apiKey
+	t.Cleanup(func() {
+		apiKey = origAPIKey
+		resetFlags()
+	})
+
+	// With no API key and no server, but with stdin flag and dry-run, we can test stdin parsing
+	apiKey = ""
+	resetFlags()
+	flagStdin = true
+	flagDryRun = true
+
+	// Create a pipe to simulate stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldStdin := os.Stdin
+	os.Stdin = r
+
+	// Write some queries to stdin, then close
+	if _, err := w.WriteString("query one\nquery two\n"); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+
+	// Capture stdout
+	rOut, wOut, _ := os.Pipe()
+	oldStdout := os.Stdout
+	os.Stdout = wOut
+
+	cmd := &cobra.Command{}
+	cmdErr := runSearch(cmd, []string{})
+
+	wOut.Close()
+	os.Stdout = oldStdout
+	os.Stdin = oldStdin
+
+	if cmdErr != nil {
+		t.Fatalf("runSearch with --stdin --dry-run failed: %v", cmdErr)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(rOut)
+	output := buf.String()
+
+	if !strings.Contains(output, "query one") {
+		t.Errorf("expected 'query one' in output, got: %s", output)
+	}
+	if !strings.Contains(output, "query two") {
+		t.Errorf("expected 'query two' in output, got: %s", output)
+	}
+}
+
+func TestRunSearchNormal_WithJQ(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
+			Completion: "AI summary text",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	flagJQ = ".completion"
+	jsonOut = true
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test"}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal with --jq failed: %v", err)
 	}
 }
 
