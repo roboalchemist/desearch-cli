@@ -131,7 +131,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path (default ~/.config/desearch-cli/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "API key for authentication (overrides config file)")
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "Output in JSON format")
-	rootCmd.Flags().BoolVarP(nil, "version", "V", false, "Print version")
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Show verbose progress output to stderr")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "q", false, "Suppress stderr output except errors")
 	rootCmd.PersistentFlags().BoolVarP(&flagQuiet, "silent", "", false, "Suppress stderr output except errors (alias for --quiet)")

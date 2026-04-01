@@ -27,6 +27,7 @@ var (
 	flagDryRun     bool
 	flagJQ         string
 	flagFields     string
+	flagStdin      bool
 )
 
 func getAPIKey() string {
@@ -104,9 +105,9 @@ func runSearch(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return fmt.Errorf("jq filter failed: %w", err)
 			}
-			fmt.Print(string(filtered))
+			fmt.Fprint(os.Stdout, string(filtered))
 		} else {
-			fmt.Print(string(data))
+			fmt.Fprint(os.Stdout, string(data))
 		}
 		return nil
 	}
@@ -143,9 +144,9 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 		if err != nil {
 			return fmt.Errorf("jq filter failed: %w", err)
 		}
-		fmt.Print(string(filtered))
+		fmt.Fprint(os.Stdout, string(filtered))
 	} else {
-		fmt.Print(formatted)
+		fmt.Fprint(os.Stdout, formatted)
 	}
 	return nil
 }
@@ -167,7 +168,7 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line != "" {
-			fmt.Println(line)
+			fmt.Fprintln(os.Stdout, line)
 		}
 	}
 	if err := scanner.Err(); err != nil {

@@ -35,7 +35,7 @@ var showCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to marshal config as JSON: %w", err)
 			}
-			fmt.Println(string(data))
+			fmt.Fprintln(os.Stdout, string(data))
 			return nil
 		}
 

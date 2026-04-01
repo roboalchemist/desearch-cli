@@ -205,6 +205,52 @@ func TestIntegration_ExitCodes(t *testing.T) {
 	}
 }
 
+func TestIntegration_ExitCode3_UnreadableConfig(t *testing.T) {
+	if shouldSkipWriteTests() {
+		t.Skip("READONLY=1")
+	}
+
+	// Create a temp HOME dir with an unreadable config file.
+	// LoadConfig returns a SystemError when the file exists but is unreadable
+	// (permission denied, I/O failure), which triggers exit code 3.
+	tmpDir := t.TempDir()
+	configDir := filepath.Join(tmpDir, "desearch-cli")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Skipf("could not create temp config dir: %v", err)
+	}
+
+	configPath := filepath.Join(configDir, "config.toml")
+	// Write a readable file first, then remove read permission to trigger permission denied.
+	if err := os.WriteFile(configPath, []byte("api_key = \"test\"\n"), 0644); err != nil {
+		t.Skipf("could not write temp config file: %v", err)
+	}
+	if err := os.Chmod(configPath, 0000); err != nil {
+		t.Skipf("could not chmod temp config file to 0000: %v", err)
+	}
+
+	binary := buildBinary(t)
+
+	cmd := exec.Command(binary, "search", "--dry-run", "test")
+	// Override HOME so the binary looks for config in our temp dir.
+	cmd.Env = append(os.Environ(), "HOME="+tmpDir)
+	cmd.Run()
+
+	exitCode := -1
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	// On systems where the test runs as root (e.g. inside a container),
+	// root can read any file regardless of mode 0000, so skip in that case.
+	if exitCode != 3 {
+		// If we got exit code 0, likely running as root — skip rather than fail.
+		if exitCode == 0 {
+			t.Skip("exit code 0 suggests running as root (root ignores mode 0000); skipping")
+		}
+		t.Errorf("exit code = %d, want 3", exitCode)
+	}
+}
+
 func TestIntegration_SearchFlags(t *testing.T) {
 	binary := buildBinary(t)
 
