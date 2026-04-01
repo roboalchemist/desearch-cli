@@ -78,8 +78,8 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	if flagFields != "" && flagDryRun {
 		return fmt.Errorf("--fields cannot be used with --dry-run")
 	}
-	// Validate --jq requires --json or --no-ai
-	if flagJQ != "" && !jsonOut && !flagNoAI {
+	// Validate --jq requires --json or --no-ai (--dry-run always outputs JSON so it's also allowed)
+	if flagJQ != "" && !jsonOut && !flagNoAI && !flagDryRun {
 		return fmt.Errorf("--jq requires --json or --no-ai to be set")
 	}
 	// Validate --fields requires --json
