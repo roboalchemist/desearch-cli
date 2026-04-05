@@ -713,7 +713,7 @@ func TestEmptyToolMatchWarning(t *testing.T) {
 		w.Close()
 		os.Stderr = old
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		return buf.String()
 	}
 
