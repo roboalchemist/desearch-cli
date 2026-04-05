@@ -116,7 +116,7 @@ func TestIsNoAuthCommand(t *testing.T) {
 		{"fish command", "fish", true},
 		{"powershell command", "powershell", true},
 		{"clear command", "clear", true},
-		{"desearch root", "desearch", true},
+		{"desearch root", "desearch-cli", true},
 		{"search command", "search", false},
 		{"config command", "config", false},
 		{"show command", "show", false},
@@ -163,7 +163,7 @@ func TestRootCmd(t *testing.T) {
 		t.Error("RootCmd() should not return nil")
 		return
 	}
-	if cmd.Use != "desearch" {
-		t.Errorf("RootCmd().Use = %q, want %q", cmd.Use, "desearch")
+	if cmd.Use != "desearch-cli" {
+		t.Errorf("RootCmd().Use = %q, want %q", cmd.Use, "desearch-cli")
 	}
 }

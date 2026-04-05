@@ -192,18 +192,18 @@ func hasDryRunInArgs() bool {
 func isNoAuthCommand(cmd *cobra.Command) bool {
 	noAuthCommands := map[string]bool{
 		"desearch-cli": true, // root command - help, version, etc don't need auth
-		"version":    true,
-		"help":       true,
-		"docs":       true,
-		"skill":      true,
-		"print":      true,
-		"add":        true,
-		"completion": true,
-		"bash":       true,
-		"zsh":        true,
-		"fish":       true,
-		"powershell": true,
-		"clear":      true,
+		"version":      true,
+		"help":         true,
+		"docs":         true,
+		"skill":        true,
+		"print":        true,
+		"add":          true,
+		"completion":   true,
+		"bash":         true,
+		"zsh":          true,
+		"fish":         true,
+		"powershell":   true,
+		"clear":        true,
 	}
 	for c := cmd; c != nil; c = c.Parent() {
 		if noAuthCommands[c.Name()] {

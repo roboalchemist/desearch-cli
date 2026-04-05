@@ -11,11 +11,11 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	APIKey            string   `toml:"api_key"`
-	DefaultTools      []string `toml:"default_tools"`
-	DefaultDateFilter string   `toml:"default_date_filter"`
-	DefaultCount      int      `toml:"default_count"`
-	HistoryEnabled    bool     `toml:"history_enabled"`
+	APIKey            string   `toml:"api_key"            json:"api_key"`
+	DefaultTools      []string `toml:"default_tools"      json:"default_tools"`
+	DefaultDateFilter string   `toml:"default_date_filter" json:"default_date_filter"`
+	DefaultCount      int      `toml:"default_count"      json:"default_count"`
+	HistoryEnabled    bool     `toml:"history_enabled"    json:"history_enabled"`
 }
 
 // ConfigPath returns the XDG-compliant config file path.
