@@ -15,6 +15,7 @@ type Config struct {
 	DefaultTools      []string `toml:"default_tools"`
 	DefaultDateFilter string   `toml:"default_date_filter"`
 	DefaultCount      int      `toml:"default_count"`
+	HistoryEnabled    bool     `toml:"history_enabled"`
 }
 
 // ConfigPath returns the XDG-compliant config file path.

@@ -358,3 +358,84 @@ func TestLoadConfig_InvalidTOML(t *testing.T) {
 		assert.Contains(t, err.Error(), "parsing config file")
 	})
 }
+
+func TestHistoryEnabled(t *testing.T) {
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	t.Cleanup(func() {
+		if origXDG == "" {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		} else {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		}
+	})
+
+	t.Run("loads history_enabled=true from TOML file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		configDir := filepath.Join(tmpDir, "desearch-cli")
+		err := os.MkdirAll(configDir, 0700)
+		require.NoError(t, err)
+
+		configFile := filepath.Join(configDir, "config.toml")
+		err = os.WriteFile(configFile, []byte("history_enabled = true\n"), 0600)
+		require.NoError(t, err)
+
+		loaded, err := LoadConfig()
+		require.NoError(t, err)
+		assert.True(t, loaded.HistoryEnabled)
+	})
+
+	t.Run("defaults history_enabled to false when not set", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		configDir := filepath.Join(tmpDir, "desearch-cli")
+		err := os.MkdirAll(configDir, 0700)
+		require.NoError(t, err)
+
+		configFile := filepath.Join(configDir, "config.toml")
+		err = os.WriteFile(configFile, []byte("api_key = \"test-key\"\n"), 0600)
+		require.NoError(t, err)
+
+		loaded, err := LoadConfig()
+		require.NoError(t, err)
+		assert.False(t, loaded.HistoryEnabled)
+	})
+
+	t.Run("round-trip: save and load history_enabled=true", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		cfg := &Config{
+			APIKey:         "round-trip-key",
+			DefaultCount:   10,
+			HistoryEnabled: true,
+		}
+		err := SaveConfig(cfg)
+		require.NoError(t, err)
+
+		loaded, err := LoadConfig()
+		require.NoError(t, err)
+		assert.Equal(t, "round-trip-key", loaded.APIKey)
+		assert.Equal(t, 10, loaded.DefaultCount)
+		assert.True(t, loaded.HistoryEnabled)
+	})
+
+	t.Run("round-trip: save and load history_enabled=false", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		cfg := &Config{
+			APIKey:         "round-trip-key-2",
+			HistoryEnabled: false,
+		}
+		err := SaveConfig(cfg)
+		require.NoError(t, err)
+
+		loaded, err := LoadConfig()
+		require.NoError(t, err)
+		assert.Equal(t, "round-trip-key-2", loaded.APIKey)
+		assert.False(t, loaded.HistoryEnabled)
+	})
+}
