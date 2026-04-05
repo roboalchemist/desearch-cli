@@ -191,7 +191,6 @@ func isNoAuthCommand(cmd *cobra.Command) bool {
 		"print":      true,
 		"add":        true,
 		"completion": true,
-		"ai":         true,
 		"bash":       true,
 		"zsh":        true,
 		"fish":       true,

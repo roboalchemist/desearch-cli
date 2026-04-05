@@ -110,7 +110,7 @@ func TestIsNoAuthCommand(t *testing.T) {
 		{"print command", "print", true},
 		{"add command", "add", true},
 		{"completion command", "completion", true},
-		{"ai command", "ai", true},
+		{"ai command", "ai", false},
 		{"bash command", "bash", true},
 		{"zsh command", "zsh", true},
 		{"fish command", "fish", true},

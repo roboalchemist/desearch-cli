@@ -85,7 +85,7 @@ func mockSearchServer(t *testing.T) *httptest.Server {
 		}
 
 		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
+		if auth == "" {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
