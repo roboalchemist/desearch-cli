@@ -31,8 +31,16 @@ var rootCmd = &cobra.Command{
 	Version:       version,
 	// Args wraps the default legacyArgs validator so that unknown subcommand
 	// errors are tagged as UsageErrors (exit code 2) rather than generic errors.
+	// When GNU "--" dispatch is used (e.g. "desearch -- search query"), Cobra stops
+	// subcommand routing and passes args=["search", "query", ...] to root's Args.
+	// We detect known subcommand names here and return nil so PreRunE can handle the
+	// dispatch. Only truly unknown commands produce a usage error.
 	Args: func(cmd *cobra.Command, args []string) error {
 		if cmd.HasSubCommands() && !cmd.HasParent() && len(args) > 0 {
+			subCmd, _, err := cmd.Find([]string{args[0]})
+			if err == nil && subCmd != cmd {
+				return nil
+			}
 			return errors.WrapUsage(fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath()))
 		}
 		return nil
@@ -207,6 +215,7 @@ func isNoAuthCommand(cmd *cobra.Command) bool {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
+	dispatchedToSubcmd = false // reset between invocations (e.g. test suites calling Execute twice)
 	rootCmd.Version = version
 	rootCmd.SetVersionTemplate("desearch {{.Version}}\nCopyright 2026 RoboAlchemist\n")
 	return rootCmd.Execute()

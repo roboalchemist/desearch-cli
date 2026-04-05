@@ -581,6 +581,99 @@ func TestIntegration_ConfigForce(t *testing.T) {
 	})
 }
 
+func TestIntegration_GNUDashDashDispatch(t *testing.T) {
+	binary := buildBinary(t)
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantOut    string
+		wantCode   int
+		wantFields []string // substrings that must appear in output
+	}{
+		{
+			name:     "GNU -- search dry-run matches non-GNU",
+			args:     []string{"--", "search", "test query", "--dry-run"},
+			wantCode: 0,
+			wantFields: []string{
+				"test query",
+				"prompt",
+			},
+		},
+		{
+			name:     "GNU -- search --count matches non-GNU",
+			args:     []string{"--", "search", "test count", "--dry-run", "--count", "20"},
+			wantCode: 0,
+			wantFields: []string{
+				"test count",
+				"prompt",
+			},
+		},
+		{
+			name:     "GNU -- with --fields auth bypass",
+			args:     []string{"--", "search", "test", "--dry-run", "--json", "--fields", "prompt"},
+			wantCode: 0,
+			wantFields: []string{
+				"test",
+				"prompt",
+			},
+		},
+		{
+			name:     "GNU -- with -D short flag",
+			args:     []string{"--", "search", "test", "-D"},
+			wantCode: 0,
+			wantFields: []string{
+				"test",
+				"prompt",
+			},
+		},
+		{
+			name:     "GNU -- with --dry-run short flag",
+			args:     []string{"--", "search", "test", "--dry-run"},
+			wantCode: 0,
+			wantFields: []string{
+				"test",
+				"prompt",
+			},
+		},
+		{
+			name:     "unknown command still errors with exit 2",
+			args:     []string{"garbage"},
+			wantCode: 2,
+		},
+		{
+			name:     "GNU -- unknown subcommand errors",
+			args:     []string{"--", "notasubcommand", "test"},
+			wantCode: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command(binary, tt.args...)
+			output, _ := cmd.CombinedOutput()
+
+			exitCode := -1
+			if cmd.ProcessState != nil {
+				exitCode = cmd.ProcessState.ExitCode()
+			}
+
+			if exitCode != tt.wantCode {
+				t.Errorf("exit code = %d, want %d\nOutput: %s", exitCode, tt.wantCode, output)
+				return
+			}
+
+			if tt.wantFields != nil {
+				for _, field := range tt.wantFields {
+					if !strings.Contains(string(output), field) {
+						t.Errorf("output does not contain %q:\n%s", field, output)
+					}
+				}
+			}
+		})
+	}
+}
+
 // TestIntegration_LiveAPI runs live API tests if SKIP_INTEGRATION is not set
 func TestIntegration_LiveAPI(t *testing.T) {
 	if os.Getenv("SKIP_INTEGRATION") != "" {
