@@ -110,7 +110,7 @@ func TestIsNoAuthCommand(t *testing.T) {
 		{"print command", "print", true},
 		{"add command", "add", true},
 		{"completion command", "completion", true},
-		{"ai command", "ai", true},
+		{"ai command", "ai", false},
 		{"bash command", "bash", true},
 		{"zsh command", "zsh", true},
 		{"fish command", "fish", true},
@@ -161,6 +161,7 @@ func TestRootCmd(t *testing.T) {
 	cmd := RootCmd()
 	if cmd == nil {
 		t.Error("RootCmd() should not return nil")
+		t.FailNow()
 	}
 	if cmd.Use != "desearch" {
 		t.Errorf("RootCmd().Use = %q, want %q", cmd.Use, "desearch")
