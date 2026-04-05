@@ -70,6 +70,70 @@ func (f *JSONFormatter) Format(resp *api.SearchResponse) string {
 	return string(data)
 }
 
+// matchesTool returns true if the tool filter matches the source key, name, or
+// singular form (name with trailing "S" removed). An empty tool always matches.
+func matchesTool(tool, key, name string) bool {
+	if tool == "" {
+		return true
+	}
+	return strings.EqualFold(tool, key) ||
+		strings.EqualFold(tool, name) ||
+		strings.EqualFold(tool, strings.TrimSuffix(name, "S"))
+}
+
+// iterateSources calls callback for each non-empty source section that passes the
+// tool filter. tool is the active --tool filter (empty = all sources).
+func iterateSources(resp *api.SearchResponse, tool string, callback func(name string, results interface{})) {
+	sources := []struct {
+		key     string
+		name    string
+		results interface{}
+	}{
+		{"search", "WEB", resp.Search},
+		{"hacker_news_search", "HACKERNEWS", resp.HackerNewsSearch},
+		{"reddit_search", "REDDIT", resp.RedditSearch},
+		{"youtube_search", "YOUTUBE", resp.YoutubeSearch},
+		{"tweets", "TWITTER", resp.Tweets},
+		{"wikipedia_search", "WIKIPEDIA", resp.WikipediaSearch},
+		{"arxiv_search", "ARXIV", resp.ArxivSearch},
+	}
+	for _, src := range sources {
+		if !matchesTool(tool, src.key, src.name) {
+			continue
+		}
+		switch r := src.results.(type) {
+		case []api.WebResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		case []api.HackerNewsResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		case []api.RedditResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		case []api.YoutubeResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		case []api.TweetResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		case []api.WikipediaResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		case []api.ArxivResult:
+			if len(r) > 0 {
+				callback(src.name, r)
+			}
+		}
+	}
+}
+
 // HumanFormatter pretty-prints each source section with headers.
 type HumanFormatter struct {
 	NoAI bool
@@ -79,74 +143,29 @@ type HumanFormatter struct {
 // Format returns a human-readable formatted string of the search response.
 func (f *HumanFormatter) Format(resp *api.SearchResponse) string {
 	var sb strings.Builder
-
-	// Define source sections in order
-	sources := []struct {
-		key      string
-		name     string
-		results  interface{}
-		canCheck bool
-	}{
-		{"search", "WEB", resp.Search, true},
-		{"hacker_news_search", "HACKERNEWS", resp.HackerNewsSearch, true},
-		{"reddit_search", "REDDIT", resp.RedditSearch, true},
-		{"youtube_search", "YOUTUBE", resp.YoutubeSearch, true},
-		{"tweets", "TWITTER", resp.Tweets, true},
-		{"wikipedia_search", "WIKIPEDIA", resp.WikipediaSearch, true},
-		{"arxiv_search", "ARXIV", resp.ArxivSearch, true},
-	}
-
-	for _, src := range sources {
-		// Skip if a specific tool filter is set and doesn't match
-		if f.Tool != "" && !strings.EqualFold(f.Tool, src.key) &&
-			!strings.EqualFold(f.Tool, src.name) &&
-			!strings.EqualFold(f.Tool, strings.TrimSuffix(src.name, "S")) {
-			continue
-		}
-
-		if !src.canCheck {
-			continue
-		}
-
-		switch r := src.results.(type) {
+	iterateSources(resp, f.Tool, func(name string, results interface{}) {
+		switch r := results.(type) {
 		case []api.WebResult:
-			if len(r) > 0 {
-				f.writeWebResults(&sb, src.name, r)
-			}
+			f.writeWebResults(&sb, name, r)
 		case []api.HackerNewsResult:
-			if len(r) > 0 {
-				f.writeHackerNewsResults(&sb, src.name, r)
-			}
+			f.writeHackerNewsResults(&sb, name, r)
 		case []api.RedditResult:
-			if len(r) > 0 {
-				f.writeRedditResults(&sb, src.name, r)
-			}
+			f.writeRedditResults(&sb, name, r)
 		case []api.YoutubeResult:
-			if len(r) > 0 {
-				f.writeYoutubeResults(&sb, src.name, r)
-			}
+			f.writeYoutubeResults(&sb, name, r)
 		case []api.TweetResult:
-			if len(r) > 0 {
-				f.writeTweetResults(&sb, src.name, r)
-			}
+			f.writeTweetResults(&sb, name, r)
 		case []api.WikipediaResult:
-			if len(r) > 0 {
-				f.writeWikipediaResults(&sb, src.name, r)
-			}
+			f.writeWikipediaResults(&sb, name, r)
 		case []api.ArxivResult:
-			if len(r) > 0 {
-				f.writeArxivResults(&sb, src.name, r)
-			}
+			f.writeArxivResults(&sb, name, r)
 		}
-	}
-
-	// AI Summary section
+	})
 	if !f.NoAI && resp.Completion != "" {
 		sb.WriteString("=== AI SUMMARY ===\n")
 		sb.WriteString(resp.Completion)
 		sb.WriteString("\n")
 	}
-
 	return sb.String()
 }
 
@@ -260,74 +279,29 @@ type PlaintextFormatter struct {
 // Format returns a tab-separated formatted string of the search response.
 func (f *PlaintextFormatter) Format(resp *api.SearchResponse) string {
 	var sb strings.Builder
-
-	// Define source sections in order
-	sources := []struct {
-		key      string
-		name     string
-		results  interface{}
-		canCheck bool
-	}{
-		{"search", "WEB", resp.Search, true},
-		{"hacker_news_search", "HACKERNEWS", resp.HackerNewsSearch, true},
-		{"reddit_search", "REDDIT", resp.RedditSearch, true},
-		{"youtube_search", "YOUTUBE", resp.YoutubeSearch, true},
-		{"tweets", "TWITTER", resp.Tweets, true},
-		{"wikipedia_search", "WIKIPEDIA", resp.WikipediaSearch, true},
-		{"arxiv_search", "ARXIV", resp.ArxivSearch, true},
-	}
-
-	for _, src := range sources {
-		// Skip if a specific tool filter is set and doesn't match
-		if f.Tool != "" && !strings.EqualFold(f.Tool, src.key) &&
-			!strings.EqualFold(f.Tool, src.name) &&
-			!strings.EqualFold(f.Tool, strings.TrimSuffix(src.name, "S")) {
-			continue
-		}
-
-		if !src.canCheck {
-			continue
-		}
-
-		switch r := src.results.(type) {
+	iterateSources(resp, f.Tool, func(name string, results interface{}) {
+		switch r := results.(type) {
 		case []api.WebResult:
-			if len(r) > 0 {
-				f.writeWebResults(&sb, src.name, r)
-			}
+			f.writeWebResults(&sb, name, r)
 		case []api.HackerNewsResult:
-			if len(r) > 0 {
-				f.writeHackerNewsResults(&sb, src.name, r)
-			}
+			f.writeHackerNewsResults(&sb, name, r)
 		case []api.RedditResult:
-			if len(r) > 0 {
-				f.writeRedditResults(&sb, src.name, r)
-			}
+			f.writeRedditResults(&sb, name, r)
 		case []api.YoutubeResult:
-			if len(r) > 0 {
-				f.writeYoutubeResults(&sb, src.name, r)
-			}
+			f.writeYoutubeResults(&sb, name, r)
 		case []api.TweetResult:
-			if len(r) > 0 {
-				f.writeTweetResults(&sb, src.name, r)
-			}
+			f.writeTweetResults(&sb, name, r)
 		case []api.WikipediaResult:
-			if len(r) > 0 {
-				f.writeWikipediaResults(&sb, src.name, r)
-			}
+			f.writeWikipediaResults(&sb, name, r)
 		case []api.ArxivResult:
-			if len(r) > 0 {
-				f.writeArxivResults(&sb, src.name, r)
-			}
+			f.writeArxivResults(&sb, name, r)
 		}
-	}
-
-	// AI Summary section
+	})
 	if !f.NoAI && resp.Completion != "" {
 		sb.WriteString("=== AI SUMMARY ===\n")
 		sb.WriteString(resp.Completion)
 		sb.WriteString("\n")
 	}
-
 	return sb.String()
 }
 
