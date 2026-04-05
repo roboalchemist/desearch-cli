@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-
 func initConfigTest() {
 	viper.Reset()
 }

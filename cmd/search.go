@@ -190,6 +190,7 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	if err != nil {
 		return fmt.Errorf("stream search failed: %w", err)
 	}
+	defer reader.Close()
 
 	// Stream output directly to stdout using scanner for line-by-line output
 	scanner := bufio.NewScanner(reader)

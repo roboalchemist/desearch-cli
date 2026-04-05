@@ -161,6 +161,7 @@ func TestRootCmd(t *testing.T) {
 	cmd := RootCmd()
 	if cmd == nil {
 		t.Error("RootCmd() should not return nil")
+		return
 	}
 	if cmd.Use != "desearch" {
 		t.Errorf("RootCmd().Use = %q, want %q", cmd.Use, "desearch")

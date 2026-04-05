@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 func resetCompletionFlags() {
 	completionSystemMessage = ""
 	completionJSON = false

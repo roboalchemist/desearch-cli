@@ -134,6 +134,7 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("search stream failed: %w", err)
 	}
+	defer reader.Close()
 
 	// When --json flag is set, accumulate completion and output at end
 	var completionBuilder strings.Builder
