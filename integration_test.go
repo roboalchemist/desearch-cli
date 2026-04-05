@@ -347,6 +347,134 @@ func TestIntegration_ConfigCommands(t *testing.T) {
 	}
 }
 
+// TestIntegration_ConfigHistoryEnabled verifies the full round-trip:
+//
+//  1. Run `desearch-cli config --history-enabled=true` — the config file should
+//     contain `history_enabled = true`.
+//  2. Run `desearch-cli config show` — output must include "History Enabled: true".
+func TestIntegration_ConfigHistoryEnabled(t *testing.T) {
+	if shouldSkipWriteTests() {
+		t.Skip("skipping filesystem-mutating test (READONLY=1)")
+	}
+
+	binary := buildBinary(t)
+
+	// Use a dedicated XDG_CONFIG_HOME so we don't touch the real config.
+	tmpDir := t.TempDir()
+	env := append(os.Environ(), "XDG_CONFIG_HOME="+tmpDir)
+
+	// Step 1: set history-enabled=true via CLI.
+	cmd := exec.Command(binary, "config", "--history-enabled=true")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("config --history-enabled=true failed: %v\nOutput: %s", err, out)
+	}
+
+	// Step 2: verify the config file contains history_enabled = true.
+	cfgFile := filepath.Join(tmpDir, "desearch-cli", "config.toml")
+	data, err := os.ReadFile(cfgFile)
+	if err != nil {
+		t.Fatalf("could not read config file %s: %v", cfgFile, err)
+	}
+	if !strings.Contains(string(data), "history_enabled") {
+		t.Errorf("config file does not contain 'history_enabled':\n%s", data)
+	}
+	if !strings.Contains(string(data), "true") {
+		t.Errorf("config file does not contain 'true' for history_enabled:\n%s", data)
+	}
+
+	// Step 3: run config show and verify the output.
+	cmd = exec.Command(binary, "config", "show")
+	cmd.Env = env
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("config show failed: %v\nOutput: %s", err, out)
+	}
+	if !strings.Contains(string(out), "History Enabled:") {
+		t.Errorf("config show output does not contain 'History Enabled:':\n%s", out)
+	}
+	if !strings.Contains(string(out), "true") {
+		t.Errorf("config show output does not contain 'true' for history enabled:\n%s", out)
+	}
+}
+
+// TestIntegration_ConfigHistoryEnabledFalse verifies that setting
+// --history-enabled=false is stored and reflected in config show.
+func TestIntegration_ConfigHistoryEnabledFalse(t *testing.T) {
+	if shouldSkipWriteTests() {
+		t.Skip("skipping filesystem-mutating test (READONLY=1)")
+	}
+
+	binary := buildBinary(t)
+
+	tmpDir := t.TempDir()
+	env := append(os.Environ(), "XDG_CONFIG_HOME="+tmpDir)
+
+	// Pre-write config with history_enabled=true.
+	cfgDir := filepath.Join(tmpDir, "desearch-cli")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte("history_enabled = true\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Now disable it.
+	cmd := exec.Command(binary, "config", "--history-enabled=false")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("config --history-enabled=false failed: %v\nOutput: %s", err, out)
+	}
+
+	// Verify config show reflects the change.
+	cmd = exec.Command(binary, "config", "show")
+	cmd.Env = env
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("config show failed: %v\nOutput: %s", err, out)
+	}
+	if !strings.Contains(string(out), "History Enabled:") {
+		t.Errorf("config show output does not contain 'History Enabled:':\n%s", out)
+	}
+	// The value should be false (not true).
+	if strings.Contains(string(out), "History Enabled: true") {
+		t.Errorf("config show should show 'false' for history_enabled after --history-enabled=false:\n%s", out)
+	}
+}
+
+// TestIntegration_ConfigShowIncludesDefaultCount verifies that config show
+// displays the Default Count field.
+func TestIntegration_ConfigShowIncludesDefaultCount(t *testing.T) {
+	binary := buildBinary(t)
+
+	tmpDir := t.TempDir()
+	env := append(os.Environ(), "XDG_CONFIG_HOME="+tmpDir)
+
+	// Write config with a default_count value.
+	cfgDir := filepath.Join(tmpDir, "desearch-cli")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte("default_count = 25\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(binary, "config", "show")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("config show failed: %v\nOutput: %s", err, out)
+	}
+	if !strings.Contains(string(out), "Default Count:") {
+		t.Errorf("config show output does not contain 'Default Count:':\n%s", out)
+	}
+	if !strings.Contains(string(out), "25") {
+		t.Errorf("config show output does not contain '25' for default_count:\n%s", out)
+	}
+}
+
 func TestIntegration_DocsCommand(t *testing.T) {
 	binary := buildBinary(t)
 

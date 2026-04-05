@@ -359,6 +359,50 @@ func TestLoadConfig_InvalidTOML(t *testing.T) {
 	})
 }
 
+func TestConfigDir(t *testing.T) {
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	t.Cleanup(func() {
+		if origXDG == "" {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		} else {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		}
+	})
+
+	t.Run("uses XDG_CONFIG_HOME when set", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+		dir, err := ConfigDir()
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join(tmpDir, "desearch-cli"), dir)
+	})
+
+	t.Run("falls back to ~/.config when XDG_CONFIG_HOME not set", func(t *testing.T) {
+		os.Unsetenv("XDG_CONFIG_HOME")
+		home, err := os.UserHomeDir()
+		require.NoError(t, err)
+		dir, err := ConfigDir()
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join(home, ".config", "desearch-cli"), dir)
+	})
+
+	t.Run("returns error when HOME is unset and XDG_CONFIG_HOME is unset", func(t *testing.T) {
+		origHOME := os.Getenv("HOME")
+		t.Cleanup(func() {
+			if origHOME == "" {
+				os.Unsetenv("HOME")
+			} else {
+				os.Setenv("HOME", origHOME)
+			}
+		})
+		os.Unsetenv("XDG_CONFIG_HOME")
+		os.Unsetenv("HOME")
+		_, err := ConfigDir()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "could not determine home directory")
+	})
+}
+
 func TestHistoryEnabled(t *testing.T) {
 	origXDG := os.Getenv("XDG_CONFIG_HOME")
 	t.Cleanup(func() {
