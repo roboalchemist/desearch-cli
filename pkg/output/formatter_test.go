@@ -764,7 +764,6 @@ func TestEmptyToolMatchWarning(t *testing.T) {
 	})
 }
 
-
 func TestJSONFormatter_Format_FilterFields(t *testing.T) {
 	resp := &api.SearchResponse{
 		Search: []api.WebResult{
