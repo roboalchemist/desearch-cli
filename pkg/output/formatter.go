@@ -70,15 +70,15 @@ func (f *JSONFormatter) Format(resp *api.SearchResponse) string {
 	return string(data)
 }
 
-// matchesTool returns true if the tool filter matches the source key, name, or
-// singular form (name with trailing "S" removed). An empty tool always matches.
+// matchesTool returns true if the tool filter matches the source key or name.
+// An empty tool always matches. Exact key/name matching is sufficient;
+// singular-form aliases are not needed since all tool names are already plural
+// and case-insensitive exact match handles user input.
 func matchesTool(tool, key, name string) bool {
 	if tool == "" {
 		return true
 	}
-	return strings.EqualFold(tool, key) ||
-		strings.EqualFold(tool, name) ||
-		strings.EqualFold(tool, strings.TrimSuffix(name, "S"))
+	return strings.EqualFold(tool, key) || strings.EqualFold(tool, name)
 }
 
 // iterateSources calls callback for each non-empty source section that passes the
@@ -161,6 +161,9 @@ func (f *HumanFormatter) Format(resp *api.SearchResponse) string {
 			f.writeArxivResults(&sb, name, r)
 		}
 	})
+	if sb.Len() == 0 && f.Tool != "" {
+		fmt.Fprintf(os.Stderr, "warning: --tool %q matched no results (valid tools: web, hackernews, reddit, wikipedia, youtube, twitter, arxiv)\n", f.Tool)
+	}
 	if !f.NoAI && resp.Completion != "" {
 		sb.WriteString("=== AI SUMMARY ===\n")
 		sb.WriteString(resp.Completion)
@@ -297,6 +300,9 @@ func (f *PlaintextFormatter) Format(resp *api.SearchResponse) string {
 			f.writeArxivResults(&sb, name, r)
 		}
 	})
+	if sb.Len() == 0 && f.Tool != "" {
+		fmt.Fprintf(os.Stderr, "warning: --tool %q matched no results (valid tools: web, hackernews, reddit, wikipedia, youtube, twitter, arxiv)\n", f.Tool)
+	}
 	if !f.NoAI && resp.Completion != "" {
 		sb.WriteString("=== AI SUMMARY ===\n")
 		sb.WriteString(resp.Completion)

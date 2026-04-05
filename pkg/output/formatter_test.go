@@ -1,7 +1,10 @@
 package output
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -663,6 +666,104 @@ func TestFilterJSONFields(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchesTool_NoTrimSuffix(t *testing.T) {
+	// matchesTool must NOT use strings.TrimSuffix(name, "S"), which produces
+	// garbage for "HACKERNEWS" -> "HACKERNEW". Exact name matching is sufficient.
+	tests := []struct {
+		tool  string
+		key   string
+		name  string
+		match bool
+	}{
+		{"hackernews", "hacker_news_search", "HACKERNEWS", true},
+		{"HACKERNEWS", "hacker_news_search", "HACKERNEWS", true},
+		{"hackernews", "hacker_news_search", "HACKERNEWS", true},
+		{"web", "search", "WEB", true},
+		{"WEB", "search", "WEB", true},
+		{"search", "search", "WEB", true},
+		{"reddit", "reddit_search", "REDDIT", true},
+		{"youtube", "youtube_search", "YOUTUBE", true},
+		{"twitter", "tweets", "TWITTER", true},
+		{"wikipedia", "wikipedia_search", "WIKIPEDIA", true},
+		{"arxiv", "arxiv_search", "ARXIV", true},
+		{"hackernew", "hacker_news_search", "HACKERNEWS", false},
+		{"invalid", "search", "WEB", false},
+		{"", "search", "WEB", true},
+	}
+	for _, tt := range tests {
+		got := matchesTool(tt.tool, tt.key, tt.name)
+		if got != tt.match {
+			t.Errorf("matchesTool(%q, %q, %q) = %v, want %v", tt.tool, tt.key, tt.name, got, tt.match)
+		}
+	}
+}
+
+func TestEmptyToolMatchWarning(t *testing.T) {
+	resp := &api.SearchResponse{
+		Search: []api.WebResult{},
+	}
+
+	// Helper to capture stderr.
+	captureStderr := func(f func()) string {
+		old := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		f()
+		w.Close()
+		os.Stderr = old
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		return buf.String()
+	}
+
+	t.Run("HumanFormatter prints warning when tool matches nothing", func(t *testing.T) {
+		f := &HumanFormatter{NoAI: true, Tool: "nonexistent"}
+		stderr := captureStderr(func() { f.Format(resp) })
+		if !strings.Contains(stderr, `warning: --tool "nonexistent"`) {
+			t.Errorf("expected stderr to contain warning, got: %q", stderr)
+		}
+	})
+
+	t.Run("HumanFormatter does not print warning when tool matches results", func(t *testing.T) {
+		respWithResults := &api.SearchResponse{
+			Search: []api.WebResult{{Title: "Test", Link: "https://example.com", Snippet: "snippet"}},
+		}
+		f := &HumanFormatter{NoAI: true, Tool: "web"}
+		stderr := captureStderr(func() { f.Format(respWithResults) })
+		if stderr != "" {
+			t.Errorf("expected no stderr output, got: %q", stderr)
+		}
+	})
+
+	t.Run("HumanFormatter does not print warning when tool is empty", func(t *testing.T) {
+		f := &HumanFormatter{NoAI: true, Tool: ""}
+		stderr := captureStderr(func() { f.Format(resp) })
+		if stderr != "" {
+			t.Errorf("expected no stderr output for empty tool filter, got: %q", stderr)
+		}
+	})
+
+	t.Run("PlaintextFormatter prints warning when tool matches nothing", func(t *testing.T) {
+		f := &PlaintextFormatter{NoAI: true, Tool: "typo"}
+		stderr := captureStderr(func() { f.Format(resp) })
+		if !strings.Contains(stderr, `warning: --tool "typo"`) {
+			t.Errorf("expected stderr to contain warning, got: %q", stderr)
+		}
+	})
+
+	t.Run("PlaintextFormatter does not print warning when tool matches results", func(t *testing.T) {
+		respWithResults := &api.SearchResponse{
+			Search: []api.WebResult{{Title: "Test", Link: "https://example.com", Snippet: "snippet"}},
+		}
+		f := &PlaintextFormatter{NoAI: true, Tool: "web"}
+		stderr := captureStderr(func() { f.Format(respWithResults) })
+		if stderr != "" {
+			t.Errorf("expected no stderr output, got: %q", stderr)
+		}
+	})
+}
+
 
 func TestJSONFormatter_Format_FilterFields(t *testing.T) {
 	resp := &api.SearchResponse{
