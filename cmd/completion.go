@@ -105,15 +105,7 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Get API key
-	apiKey := apiKey
-	if apiKey == "" {
-		apiKey = auth.GetAPIKey()
-	}
-	if apiKey == "" {
-		return fmt.Errorf("no API key found")
-	}
-
+	// API key is already populated by PersistentPreRun in root.go
 	client := api.NewClient(apiKey)
 
 	cfg, _ := auth.LoadConfig()

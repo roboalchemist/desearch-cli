@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
-	"github.com/spf13/cobra"
 )
 
 func resetCompletionFlags() {
@@ -59,34 +56,6 @@ func TestCompletionCmd_Help(t *testing.T) {
 	err := cmd.Execute()
 	if err != nil {
 		t.Errorf("completionCmd --help failed: %v", err)
-	}
-}
-
-func TestRunCompletion_NoAPIKey(t *testing.T) {
-	// Save original and restore (including env var which auth.GetAPIKey reads)
-	origAPIKey := apiKey
-	origEnvKey := os.Getenv("DESEARCH_API_KEY")
-	t.Cleanup(func() {
-		apiKey = origAPIKey
-		if origEnvKey != "" {
-			os.Setenv("DESEARCH_API_KEY", origEnvKey)
-		} else {
-			os.Unsetenv("DESEARCH_API_KEY")
-		}
-	})
-
-	apiKey = ""
-	os.Unsetenv("DESEARCH_API_KEY")
-	resetCompletionFlags()
-
-	cmd := &cobra.Command{}
-	err := runCompletion(cmd, []string{"test query"})
-
-	if err == nil {
-		t.Error("expected error for missing API key")
-	}
-	if !strings.Contains(err.Error(), "no API key") {
-		t.Errorf("error should mention 'no API key', got: %v", err)
 	}
 }
 
