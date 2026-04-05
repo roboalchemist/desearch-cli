@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -138,32 +137,10 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 	var completionBuilder strings.Builder
 	streamer := &output.StreamingFormatter{JSON: completionJSON}
 
-	// processSSESegment parses a single SSE data segment (after stripping "data: " prefix)
-	// and extracts the completion text, writing it to the streamer or accumulating it.
-	//
-	// The Desearch API sends streaming events in the format:
-	//   {"type": "text", "role": "summary", "content": "..."}
-	// Only events with "type" == "text" carry output; others (metadata, done signals) are skipped silently.
+	// processSSESegment delegates to the shared output.ParseSSEEvent helper,
+	// writing via the streamer or accumulating the completion text.
 	processSSESegment := func(seg []byte) {
-		seg = bytes.TrimSpace(seg)
-		if len(seg) == 0 {
-			return
-		}
-		// Skip the SSE stream-end sentinel
-		if string(seg) == "[DONE]" {
-			return
-		}
-		var partial map[string]interface{}
-		if err := json.Unmarshal(seg, &partial); err != nil {
-			// Not valid JSON — skip silently (could be partial/garbled data)
-			return
-		}
-		// Only emit content for "type": "text" events; skip metadata and done signals silently.
-		eventType, _ := partial["type"].(string)
-		if eventType != "text" {
-			return
-		}
-		content, _ := partial["content"].(string)
+		content := output.ParseSSEEvent(seg)
 		if content == "" {
 			return
 		}

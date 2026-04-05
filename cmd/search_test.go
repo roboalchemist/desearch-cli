@@ -195,6 +195,8 @@ func TestRunSearch_NoAPIKey(t *testing.T) {
 	// Save original and restore (including env var which auth.GetAPIKey reads)
 	origAPIKey := apiKey
 	origEnvKey := os.Getenv("DESEARCH_API_KEY")
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	tmpDir := t.TempDir()
 	t.Cleanup(func() {
 		apiKey = origAPIKey
 		if origEnvKey != "" {
@@ -202,10 +204,15 @@ func TestRunSearch_NoAPIKey(t *testing.T) {
 		} else {
 			os.Unsetenv("DESEARCH_API_KEY")
 		}
+		os.Unsetenv("XDG_CONFIG_HOME")
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		}
 	})
 
 	apiKey = ""
 	os.Unsetenv("DESEARCH_API_KEY")
+	os.Setenv("XDG_CONFIG_HOME", tmpDir) // isolate from real config file
 	resetFlags()
 
 	cmd := &cobra.Command{}
@@ -398,11 +405,14 @@ func TestRunSearchStream_WithMockServer(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		// Write streaming response
-		if _, err := w.Write([]byte(`{"completion": "Part 1"}` + "\n")); err != nil {
+		// Write streaming SSE response (same format the real API sends)
+		if _, err := w.Write([]byte(`data: {"type":"text","content":"Part 1"}` + "\n")); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := w.Write([]byte(`{"completion": "Part 2"}` + "\n")); err != nil {
+		if _, err := w.Write([]byte(`data: {"type":"text","content":"Part 2"}` + "\n")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(`data: [DONE]` + "\n")); err != nil {
 			t.Fatal(err)
 		}
 	}))
@@ -606,7 +616,7 @@ func TestRunSearchStream_ClientError(t *testing.T) {
 	// Test that runSearchStream handles client errors
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"completion": "test"}`)); err != nil {
+		if _, err := w.Write([]byte(`data: {"type":"text","content":"test"}` + "\n")); err != nil {
 			t.Fatal(err)
 		}
 	}))

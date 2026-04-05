@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -227,19 +230,30 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	}
 	defer reader.Close()
 
-	// Stream output directly to stdout using scanner for line-by-line output
-	scanner := bufio.NewScanner(reader)
-	// Increase scanner buffer for potentially long lines
-	scanner.Buffer(make([]byte, 1024), 1024*1024)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line != "" {
-			fmt.Fprintln(os.Stdout, line)
+	streamer := &output.StreamingFormatter{JSON: jsonOut}
+
+	// Read line-by-line using ReadBytes; split each line on "data: " boundaries
+	// to handle multiple SSE events packed on a single line.
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			segments := bytes.Split(line, []byte("data: "))
+			for _, seg := range segments {
+				content := output.ParseSSEEvent(seg)
+				if content != "" {
+					streamer.WriteChunk(content)
+				}
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("error reading stream: %w", err)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading stream: %w", err)
-	}
+
+	streamer.Finalize(req.Prompt, "")
 	return nil
 }
 
