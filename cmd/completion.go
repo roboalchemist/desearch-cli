@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
 	"github.com/roboalchemist/desearch-cli/pkg/auth"
@@ -20,6 +21,7 @@ import (
 var (
 	completionSystemMessage string
 	completionJSON          bool
+	completionNoHistory     bool
 )
 
 var aiCmd = &cobra.Command{
@@ -85,6 +87,7 @@ func init() {
 	rootCmd.AddCommand(aiCmd)
 	aiCmd.Flags().StringVar(&completionSystemMessage, "system-message", "", "Optional system message to override the default")
 	aiCmd.Flags().BoolVar(&completionJSON, "json", false, "Output raw JSON response")
+	aiCmd.Flags().BoolVar(&completionNoHistory, "no-history", false, "Skip writing to history even when history_enabled is set in config")
 
 	rootCmd.AddCommand(completionCmd)
 	completionCmd.AddCommand(completionBashCmd, completionZshCmd, completionFishCmd, completionPowerShellCmd)
@@ -127,6 +130,7 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		req.SystemMessage = &completionSystemMessage
 	}
 
+	t0 := time.Now()
 	reader, err := client.SearchStream(ctx, req)
 	if err != nil {
 		return fmt.Errorf("search stream failed: %w", err)
@@ -185,8 +189,28 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	latencyMs := int(time.Since(t0).Milliseconds())
+
 	// Print final newline when done (or JSON object in --json mode)
 	streamer.Finalize(query, completionBuilder.String())
+
+	// Write history after streaming completes (non-fatal on error)
+	configDir, configDirErr := auth.ConfigDir()
+	if configDirErr == nil {
+		params := map[string]interface{}{
+			"prompt": query,
+			"tools":  req.Tools,
+		}
+		if completionSystemMessage != "" {
+			params["system_message"] = completionSystemMessage
+		}
+		cfg, _ := auth.LoadConfig()
+		historyEnabled := cfg != nil && cfg.HistoryEnabled && !completionNoHistory
+		// ai cmd streams only the completion text; pass nil for the response envelope.
+		if histErr := output.WriteHistory(configDir, "ai", params, nil, latencyMs, historyEnabled); histErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to write history: %v\n", histErr)
+		}
+	}
 
 	return nil
 }

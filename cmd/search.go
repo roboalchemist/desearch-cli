@@ -34,6 +34,7 @@ var (
 	flagJQ               string
 	flagFields           string
 	flagStdin            bool
+	flagNoHistory        bool
 )
 
 func getAPIKey() string {
@@ -203,10 +204,12 @@ func runSearchOne(query string) error {
 
 func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequest) error {
 	ctx := context.Background()
+	t0 := time.Now()
 	resp, err := client.Search(ctx, req)
 	if err != nil {
 		return fmt.Errorf("search failed: %w", err)
 	}
+	latencyMs := int(time.Since(t0).Milliseconds())
 
 	formatter := output.NewFormatter(output.OutputFlags{
 		JSON:         jsonOut || flagNoAI, // jsonOut from root.go, or --no-ai implies raw
@@ -224,6 +227,36 @@ func runSearchNormal(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 	} else {
 		fmt.Fprint(os.Stdout, formatted)
 	}
+
+	// Write history after successful response (non-fatal on error)
+	cfg, _ := auth.LoadConfig()
+	configDir, configDirErr := auth.ConfigDir()
+	if configDirErr == nil {
+		params := map[string]interface{}{
+			"prompt": req.Prompt,
+			"tools":  req.Tools,
+		}
+		if req.DateFilter != nil {
+			params["date_filter"] = *req.DateFilter
+		}
+		if req.StartDate != nil {
+			params["start_date"] = *req.StartDate
+		}
+		if req.EndDate != nil {
+			params["end_date"] = *req.EndDate
+		}
+		if req.ResultType != nil {
+			params["result_type"] = *req.ResultType
+		}
+		if req.Count != nil {
+			params["count"] = *req.Count
+		}
+		historyEnabled := cfg != nil && cfg.HistoryEnabled && !flagNoHistory
+		if histErr := output.WriteHistory(configDir, "search", params, resp, latencyMs, historyEnabled); histErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to write history: %v\n", histErr)
+		}
+	}
+
 	return nil
 }
 
@@ -232,6 +265,7 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 		fmt.Fprintf(os.Stderr, "Streaming results...\n")
 	}
 	ctx := context.Background()
+	t0 := time.Now()
 	reader, err := client.SearchStream(ctx, req)
 	if err != nil {
 		return fmt.Errorf("stream search failed: %w", err)
@@ -261,7 +295,40 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 		}
 	}
 
+	latencyMs := int(time.Since(t0).Milliseconds())
 	streamer.Finalize(req.Prompt, "")
+
+	// Write history after stream is fully consumed (non-fatal on error)
+	cfg, _ := auth.LoadConfig()
+	configDir, configDirErr := auth.ConfigDir()
+	if configDirErr == nil {
+		params := map[string]interface{}{
+			"prompt":    req.Prompt,
+			"tools":     req.Tools,
+			"streaming": true,
+		}
+		if req.DateFilter != nil {
+			params["date_filter"] = *req.DateFilter
+		}
+		if req.StartDate != nil {
+			params["start_date"] = *req.StartDate
+		}
+		if req.EndDate != nil {
+			params["end_date"] = *req.EndDate
+		}
+		if req.ResultType != nil {
+			params["result_type"] = *req.ResultType
+		}
+		if req.Count != nil {
+			params["count"] = *req.Count
+		}
+		historyEnabled := cfg != nil && cfg.HistoryEnabled && !flagNoHistory
+		// Streaming responses don't have a structured response object; pass nil.
+		if histErr := output.WriteHistory(configDir, "search", params, nil, latencyMs, historyEnabled); histErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to write history: %v\n", histErr)
+		}
+	}
+
 	return nil
 }
 
@@ -302,6 +369,7 @@ func init() {
 	searchCmd.Flags().StringVar(&flagJQ, "jq", "", "jq expression to filter JSON output (requires --json or --no-ai)")
 	searchCmd.Flags().StringVar(&flagFields, "fields", "", "Comma-separated top-level JSON fields to include in output (requires --json)")
 	searchCmd.Flags().BoolVar(&flagStdin, "stdin", false, "Read queries from stdin (one per line)")
+	searchCmd.Flags().BoolVar(&flagNoHistory, "no-history", false, "Skip writing to history even when history_enabled is set in config")
 
 	searchCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		cmd.Parent().HelpFunc()(cmd, args)
