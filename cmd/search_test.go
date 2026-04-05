@@ -783,7 +783,7 @@ func TestRunSearch_StdinMode(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	buf.ReadFrom(rOut)
+	_, _ = buf.ReadFrom(rOut)
 	output := buf.String()
 
 	if !strings.Contains(output, "query one") {
