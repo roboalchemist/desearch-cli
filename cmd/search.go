@@ -110,16 +110,14 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Validate --fields cannot be used with --dry-run (no response to filter)
-	if flagFields != "" && flagDryRun {
-		return fmt.Errorf("--fields cannot be used with --dry-run")
-	}
-	// Validate --jq requires --json or --no-ai (--dry-run always outputs JSON so it's also allowed)
+	// Validate --jq requires --json, --no-ai, or --dry-run (all produce JSON output)
 	if flagJQ != "" && !jsonOut && !flagNoAI && !flagDryRun {
 		return fmt.Errorf("--jq requires --json, --no-ai, or --dry-run to be set")
 	}
-	// Validate --fields requires --json
-	if flagFields != "" && !jsonOut {
+
+	// Validate --fields requires --json (--fields filters API response).
+	// --dry-run produces JSON output that can also be filtered, so it also qualifies.
+	if flagFields != "" && !jsonOut && !flagDryRun {
 		return fmt.Errorf("--fields requires --json to be set")
 	}
 
@@ -172,6 +170,12 @@ func runSearchOne(query string) error {
 			filtered, err := output.EvaluateJQ(data, flagJQ)
 			if err != nil {
 				return fmt.Errorf("jq filter failed: %w", err)
+			}
+			fmt.Fprint(os.Stdout, string(filtered))
+		} else if flagFields != "" {
+			filtered, err := output.FilterJSONFields(data, flagFields)
+			if err != nil {
+				return fmt.Errorf("filtering fields: %w", err)
 			}
 			fmt.Fprint(os.Stdout, string(filtered))
 		} else {
@@ -289,7 +293,7 @@ func init() {
 	searchCmd.Flags().StringVar(&flagSystemMsg, "system-message", "", "System message to influence AI behavior")
 	searchCmd.Flags().BoolVar(&flagNoAI, "no-ai", false, "Skip AI completion/summary")
 	searchCmd.Flags().BoolVarP(&flagPlaintext, "plaintext", "p", false, "Output as tab-separated values (title\\turl\\tsnippet)")
-	searchCmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Build request and print as JSON without calling the API")
+	searchCmd.Flags().BoolVarP(&flagDryRun, "dry-run", "D", false, "Build request and print as JSON without calling the API")
 	searchCmd.Flags().StringVar(&flagJQ, "jq", "", "jq expression to filter JSON output (requires --json or --no-ai)")
 	searchCmd.Flags().StringVar(&flagFields, "fields", "", "Comma-separated top-level JSON fields to include in output (requires --json)")
 	searchCmd.Flags().BoolVar(&flagStdin, "stdin", false, "Read queries from stdin (one per line)")
