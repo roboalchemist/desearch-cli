@@ -10,15 +10,15 @@ jobs:
     steps:
       - name: Update Homebrew formula
         run: |
-          TAG=${{ gitea.event.release.tag_name }}
+          TAG=${{ github.event.release.tag_name }}
           VERSION=${TAG#v}
-          git config --global user.name "gitea-actions"
-          git config --global user.email "actions@gitea.roboalch.com"
-          git clone https://roboalchemist:${{ secrets.TAP_TOKEN }}@gitea.roboalch.com/roboalchemist/homebrew-private.git
-          cd homebrew-private
+          git config --global user.name "github-actions"
+          git config --global user.email "noreply@github.com"
+          git clone https://roboalchemist:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/roboalchemist/homebrew-tap.git
+          cd homebrew-tap
           sed -i "s|version \"[^\"]*\"|version \"${VERSION}\"|" Formula/desearch-cli.rb
           sed -i "s|tag: \"[^\"]*\"|tag: \"${TAG}\"|" Formula/desearch-cli.rb
           git add Formula/desearch-cli.rb
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "desearch-cli: bump to ${TAG}"
-          git push origin master
+          git push origin main

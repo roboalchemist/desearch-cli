@@ -36,12 +36,12 @@ snapshot:
 brews:
   - tap:
       owner: roboalchemist
-      name: homebrew-private
+      name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    url: "https://gitea.roboalch.com/roboalchemist/desearch-cli"
+    url: "https://github.com/roboalchemist/desearch-cli"
     commit_author:
       name: github-actions
-      email: noreply@roboalch.com
+      email: noreply@github.com
     commit_msg: "Bump desearch-cli to {{ .Version }}"
     folder: Formula
     name: desearch-cli

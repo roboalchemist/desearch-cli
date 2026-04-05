@@ -14,7 +14,7 @@ CLI for [DeSearch AI](https://desearch.ai) — a contextual AI search engine tha
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew tap roboalchemist/private ssh://git@gitea.roboalch.com:2222/roboalchemist/homebrew-private.git
+brew tap roboalchemist/tap
 brew install desearch-cli
 ```
 
@@ -25,7 +25,7 @@ Download prebuilt binaries from the GitHub releases page.
 ### Build from Source
 
 ```bash
-git clone ssh://git@gitea.roboalch.com:2222/roboalchemist/desearch-cli.git
+git clone https://github.com/roboalchemist/desearch-cli.git
 cd desearch-cli
 go install
 ```

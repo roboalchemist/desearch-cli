@@ -79,7 +79,7 @@ See: [openapi.json](openapi.json)
 
 ```bash
 # Homebrew
-brew tap roboalchemist/private ssh://git@gitea.roboalch.com:2222/roboalchemist/homebrew-private.git
+brew tap roboalchemist/tap
 brew install desearch
 
 # Or download from releases page

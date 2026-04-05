@@ -9,43 +9,37 @@ Single binary, no Python or Node.js dependencies.
 ### Homebrew (recommended)
 
 ```bash
-brew tap roboalchemist/private ssh://git@gitea.roboalch.com:2222/roboalchemist/homebrew-private.git
-brew install desearch
+brew tap roboalchemist/tap
+brew install desearch-cli
 ```
 
 ### Binary
 
-Download the latest release for your platform from the [releases page](https://git.roboalch.com/roboalchemist/desearch-cli/releases), then:
+Download the latest release for your platform from the [releases page](https://github.com/roboalchemist/desearch-cli/releases), then:
 
 ```bash
 # macOS (Intel or Apple Silicon)
-curl -L https://git.roboalch.com/roboalchemist/desearch-cli/releases/latest/download/desearch-cli_darwin_amd64.tar.gz | tar xz
+curl -L https://github.com/roboalchemist/desearch-cli/releases/latest/download/desearch-cli_Darwin_arm64.tar.gz | tar xz
 sudo mv desearch /usr/local/bin/
 
 # Linux
-curl -L https://git.roboalch.com/roboalchemist/desearch-cli/releases/latest/download/desearch-cli_linux_amd64.tar.gz | tar xz
+curl -L https://github.com/roboalchemist/desearch-cli/releases/latest/download/desearch-cli_Linux_x86_64.tar.gz | tar xz
 sudo mv desearch /usr/local/bin/
 ```
 
 ### Build from source
 
 ```bash
-# Requires Go 1.26+
 go install github.com/roboalchemist/desearch-cli@latest
 ```
 
-Or use [goreleaser](https://goreleaser.com/):
+## Releases
 
+Push a version tag to trigger an automated release:
 ```bash
-goreleaser build --snapshot --clean
+git tag v0.1.0 && git push origin v0.1.0
 ```
-
-## Homebrew Releases
-
-Releases to the private Homebrew tap require:
-1. Set `HOMEBREW_TAP_TOKEN` secret in Gitea Actions (API token with repo scope)
-2. Push a version tag: `git tag v0.1.0 && git push origin v0.1.0`
-3. GoReleaser builds and pushes the formula automatically
+GitHub Actions builds cross-platform binaries via GoReleaser and updates the Homebrew tap automatically.
 
 ## Setup
 
@@ -261,8 +255,8 @@ Use `--json` for raw JSON output.
 
 ## License
 
-See project repository.
+[MIT](LICENSE)
 
 ## Issue Tracker
 
-Report bugs and request features at: [https://git.roboalch.com/roboalchemist/desearch-cli/issues](https://git.roboalch.com/roboalchemist/desearch-cli/issues)
+Report bugs and request features at: [https://github.com/roboalchemist/desearch-cli/issues](https://github.com/roboalchemist/desearch-cli/issues)

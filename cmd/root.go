@@ -62,7 +62,7 @@ EXIT STATUS
   3+ System error (network failure, config error)
 
 BUGS
-  Report bugs at: https://gitea.roboalch.com/roboalchemist/desearch-cli/issues
+  Report bugs at: https://github.com/roboalchemist/desearch-cli/issues
 
 To get started, you need an API key. Sign up at https://console.desearch.ai`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -245,5 +245,5 @@ func init() {
 	})
 
 	// GNU standard: --help should end with "Report bugs" footer
-	rootCmd.SetHelpTemplate(rootCmd.HelpTemplate() + "\nReport bugs at: https://gitea.roboalch.com/roboalchemist/desearch-cli/issues\n")
+	rootCmd.SetHelpTemplate(rootCmd.HelpTemplate() + "\nReport bugs at: https://github.com/roboalchemist/desearch-cli/issues\n")
 }

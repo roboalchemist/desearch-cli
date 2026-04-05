@@ -12,7 +12,7 @@ Single binary, no Python/Node dependencies.
 
 - **OpenAPI spec**: `openapi.json` (downloaded from `https://api.desearch.ai/openapi.json`)
 - **API docs**: https://desearch.ai/api-reference
-- **API key**: stored in `.env` (sourced from 1Password vault `Agents`, item `DESEARCH_API_KEY`). Never commit `.env`.
+- **API key**: stored in `.env`. Never commit `.env`.
 
 ## Directory Structure
 
@@ -43,8 +43,8 @@ desearch-cli/
 │   └── SKILL.md                 # Embedded Claude Code skill (go:embed), `skill add` installs to ~/.claude/skills/desearch/
 ├── docs/
 │   └── config.md                # Full configuration schema documentation
-├── .gitea/workflows/
-│   └── bump-tap.yml             # Gitea Action: on release published → update homebrew-private formula
+├── .github/workflows/
+│   └── bump-tap.yml             # GitHub Action: on release published → update homebrew-tap formula
 ├── integration_test.go           # Integration tests (build tag: integration) using httptest.Server + exec
 ├── main.go                      # Entry point: cmd.Execute(), SystemError → exit 3, other errors → exit 1
 ├── go.mod / go.sum              # Go 1.26.1, module: github.com/roboalchemist/desearch-cli
@@ -154,9 +154,9 @@ goreleaser build --snapshot --clean  # Cross-platform snapshot builds
 
 ## Installation & Release
 
-- **Homebrew**: `roboalchemist/private` tap on Gitea (`ssh://git@gitea.roboalch.com:2222/roboalchemist/homebrew-private.git`)
-- **Release flow**: push git tag → Gitea Action (`.gitea/workflows/bump-tap.yml`) runs on `release: published` → clones `homebrew-private`, `sed`-patches version in `Formula/desearch-cli.rb`, pushes
-- **Binary**: download from Gitea releases
+- **Homebrew**: `roboalchemist/tap` tap on GitHub
+- **Release flow**: push git tag → GitHub Action (`.github/workflows/bump-tap.yml`) runs on `release: published` → updates `homebrew-tap` formula
+- **Binary**: download from GitHub releases
 - **Source**: `go install` or `make build`
 - **Manual install**: `make install` → copies to `/usr/local/bin/desearch`
 
