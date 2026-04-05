@@ -19,20 +19,21 @@ import (
 )
 
 var (
-	flagTool       []string
-	flagDateFilter string
-	flagStartDate  string
-	flagEndDate    string
-	flagStreaming  bool
-	flagResultType string
-	flagCount      int
-	flagSystemMsg  string
-	flagNoAI       bool
-	flagPlaintext  bool
-	flagDryRun     bool
-	flagJQ         string
-	flagFields     string
-	flagStdin      bool
+	flagTool             []string
+	flagDateFilter       string
+	flagStartDate        string
+	flagEndDate          string
+	flagStreaming        bool
+	flagResultType       string
+	flagCount            int
+	flagSystemMsg        string
+	flagScoringSystemMsg string
+	flagNoAI             bool
+	flagPlaintext        bool
+	flagDryRun           bool
+	flagJQ               string
+	flagFields           string
+	flagStdin            bool
 )
 
 func getAPIKey() string {
@@ -61,6 +62,9 @@ func buildSearchRequest(query string, cfg *auth.Config) *api.SearchRequest {
 	}
 	if flagSystemMsg != "" {
 		req.SystemMessage = &flagSystemMsg
+	}
+	if flagScoringSystemMsg != "" {
+		req.ScoringSystemMessage = &flagScoringSystemMsg
 	}
 	if flagResultType != "" {
 		req.ResultType = &flagResultType
@@ -291,6 +295,7 @@ func init() {
 	searchCmd.Flags().StringVar(&flagResultType, "result-type", "", "Result type: ONLY_LINKS or LINKS_WITH_FINAL_SUMMARY (default LINKS_WITH_FINAL_SUMMARY)")
 	searchCmd.Flags().IntVar(&flagCount, "count", 0, "Number of results per source (10-200)")
 	searchCmd.Flags().StringVar(&flagSystemMsg, "system-message", "", "System message to influence AI behavior")
+	searchCmd.Flags().StringVar(&flagScoringSystemMsg, "scoring-system-message", "", "System message to influence result scoring/ranking")
 	searchCmd.Flags().BoolVar(&flagNoAI, "no-ai", false, "Skip AI completion/summary")
 	searchCmd.Flags().BoolVarP(&flagPlaintext, "plaintext", "p", false, "Output as tab-separated values (title\\turl\\tsnippet)")
 	searchCmd.Flags().BoolVarP(&flagDryRun, "dry-run", "D", false, "Build request and print as JSON without calling the API")

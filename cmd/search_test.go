@@ -30,6 +30,7 @@ func resetFlags() {
 	flagResultType = ""
 	flagCount = 0
 	flagSystemMsg = ""
+	flagScoringSystemMsg = ""
 	flagNoAI = false
 	flagPlaintext = false
 	flagDryRun = false
@@ -41,22 +42,23 @@ func resetFlags() {
 
 func TestBuildSearchRequest(t *testing.T) {
 	tests := []struct {
-		name           string
-		query          string
-		tools          []string
-		dateFilter     string
-		startDate      string
-		endDate        string
-		streaming      bool
-		resultType     string
-		count          int
-		systemMessage  string
-		noAI           bool
-		wantPrompt     string
-		wantTools      []string
-		wantDateFilter *string
-		wantResultType *string
-		wantCount      *int
+		name                 string
+		query                string
+		tools                []string
+		dateFilter           string
+		startDate            string
+		endDate              string
+		streaming            bool
+		resultType           string
+		count                int
+		systemMessage        string
+		scoringSystemMessage string
+		noAI                 bool
+		wantPrompt           string
+		wantTools            []string
+		wantDateFilter       *string
+		wantResultType       *string
+		wantCount            *int
 	}{
 		{
 			name:           "basic query",
@@ -119,6 +121,14 @@ func TestBuildSearchRequest(t *testing.T) {
 			wantTools:      []string{"web"}, // default fallback
 			wantResultType: ptrString("LINKS_WITH_FINAL_SUMMARY"),
 		},
+		{
+			name:                 "query with scoring system message",
+			query:                "test",
+			scoringSystemMessage: "Prefer academic sources",
+			wantPrompt:           "test",
+			wantTools:            []string{"web"}, // default fallback
+			wantResultType:       ptrString("LINKS_WITH_FINAL_SUMMARY"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,6 +161,9 @@ func TestBuildSearchRequest(t *testing.T) {
 			if tt.systemMessage != "" {
 				flagSystemMsg = tt.systemMessage
 			}
+			if tt.scoringSystemMessage != "" {
+				flagScoringSystemMsg = tt.scoringSystemMessage
+			}
 			if tt.noAI {
 				flagNoAI = true
 			}
@@ -171,6 +184,15 @@ func TestBuildSearchRequest(t *testing.T) {
 			}
 			if tt.wantCount != nil && (req.Count == nil || *req.Count != *tt.wantCount) {
 				t.Errorf("Count = %v, want %v", req.Count, tt.wantCount)
+			}
+			if tt.scoringSystemMessage != "" {
+				if req.ScoringSystemMessage == nil || *req.ScoringSystemMessage != tt.scoringSystemMessage {
+					t.Errorf("ScoringSystemMessage = %v, want %q", req.ScoringSystemMessage, tt.scoringSystemMessage)
+				}
+			} else {
+				if req.ScoringSystemMessage != nil {
+					t.Errorf("ScoringSystemMessage = %q, want nil", *req.ScoringSystemMessage)
+				}
 			}
 		})
 	}

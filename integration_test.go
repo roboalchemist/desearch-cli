@@ -251,6 +251,33 @@ func TestIntegration_ExitCode3_UnreadableConfig(t *testing.T) {
 	}
 }
 
+func TestIntegration_ScoringSystemMessage_DryRun(t *testing.T) {
+	binary := buildBinary(t)
+
+	cmd := exec.Command(binary, "search", "test query",
+		"--scoring-system-message", "Prefer academic sources",
+		"--dry-run",
+	)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Errorf("search --scoring-system-message --dry-run failed: %v\nOutput: %s", err, output)
+		return
+	}
+
+	// Verify the field appears in the dry-run JSON output
+	var req map[string]interface{}
+	if jsonErr := json.Unmarshal(output, &req); jsonErr != nil {
+		t.Fatalf("dry-run output is not valid JSON: %v\nOutput: %s", jsonErr, output)
+	}
+	val, ok := req["scoring_system_message"]
+	if !ok {
+		t.Errorf("scoring_system_message not found in dry-run output: %s", output)
+	} else if val != "Prefer academic sources" {
+		t.Errorf("scoring_system_message = %q, want %q", val, "Prefer academic sources")
+	}
+}
+
 func TestIntegration_SearchFlags(t *testing.T) {
 	binary := buildBinary(t)
 
@@ -261,6 +288,7 @@ func TestIntegration_SearchFlags(t *testing.T) {
 		"--count", "10",
 		"--result-type", "ONLY_LINKS",
 		"--system-message", "test",
+		"--scoring-system-message", "test scoring",
 		"--no-ai",
 		"--plaintext",
 		"--dry-run",
