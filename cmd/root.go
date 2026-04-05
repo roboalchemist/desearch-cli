@@ -24,7 +24,7 @@ var version = "dev"
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:           "desearch",
+	Use:           "desearch-cli",
 	Short:         "A CLI tool for Desearch AI",
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -191,7 +191,7 @@ func hasDryRunInArgs() bool {
 // isNoAuthCommand checks if the command or any of its ancestors don't require auth
 func isNoAuthCommand(cmd *cobra.Command) bool {
 	noAuthCommands := map[string]bool{
-		"desearch":   true, // root command - help, version, etc don't need auth
+		"desearch-cli": true, // root command - help, version, etc don't need auth
 		"version":    true,
 		"help":       true,
 		"docs":       true,
@@ -217,7 +217,7 @@ func isNoAuthCommand(cmd *cobra.Command) bool {
 func Execute() error {
 	dispatchedToSubcmd = false // reset between invocations (e.g. test suites calling Execute twice)
 	rootCmd.Version = version
-	rootCmd.SetVersionTemplate("desearch {{.Version}}\nCopyright 2026 RoboAlchemist\n")
+	rootCmd.SetVersionTemplate("desearch-cli {{.Version}}\nCopyright 2026 RoboAlchemist\n")
 	return rootCmd.Execute()
 }
 

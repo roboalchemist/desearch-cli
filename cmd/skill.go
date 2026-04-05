@@ -28,7 +28,7 @@ var skillAddCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("could not determine home directory: %w", err)
 		}
-		destDir := filepath.Join(home, ".claude", "skills", "desearch")
+		destDir := filepath.Join(home, ".claude", "skills", "desearch-cli")
 		destPath := filepath.Join(destDir, "SKILL.md")
 
 		if err := os.MkdirAll(destDir, 0755); err != nil {

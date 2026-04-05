@@ -20,11 +20,11 @@ Download the latest release for your platform from the [releases page](https://g
 ```bash
 # macOS (Intel or Apple Silicon)
 curl -L https://github.com/roboalchemist/desearch-cli/releases/latest/download/desearch-cli_Darwin_arm64.tar.gz | tar xz
-sudo mv desearch /usr/local/bin/
+sudo mv desearch-cli /usr/local/bin/
 
 # Linux
 curl -L https://github.com/roboalchemist/desearch-cli/releases/latest/download/desearch-cli_Linux_x86_64.tar.gz | tar xz
-sudo mv desearch /usr/local/bin/
+sudo mv desearch-cli /usr/local/bin/
 ```
 
 ### Build from source
@@ -38,7 +38,7 @@ go install github.com/roboalchemist/desearch-cli@latest
 Get an API key at [https://console.desearch.ai](https://console.desearch.ai), then configure it:
 
 ```bash
-desearch config --api-key <YOUR_KEY>
+desearch-cli config --api-key <YOUR_KEY>
 ```
 
 That's it. The API key is stored in your config file at `~/.config/desearch-cli/config.toml`.
@@ -46,7 +46,7 @@ That's it. The API key is stored in your config file at `~/.config/desearch-cli/
 ## Basic Usage
 
 ```bash
-desearch "golang best practices"
+desearch-cli "golang best practices"
 ```
 
 ## Commands
@@ -54,15 +54,15 @@ desearch "golang best practices"
 ### `search` (default)
 
 ```bash
-desearch [query] [flags]
+desearch-cli [query] [flags]
 ```
 
-Search across all or specified sources. This is the default command, so `desearch "query"` and `desearch search "query"` are equivalent.
+Search across all or specified sources. This is the default command, so `desearch-cli "query"` and `desearch-cli search "query"` are equivalent.
 
 ### `completion`
 
 ```bash
-desearch completion <query> [flags]
+desearch-cli completion <query> [flags]
 ```
 
 Stream an AI-generated summary without per-source search results.
@@ -70,7 +70,7 @@ Stream an AI-generated summary without per-source search results.
 ### `config`
 
 ```bash
-desearch config [flags]
+desearch-cli config [flags]
 ```
 
 Manage API key and default settings.
@@ -78,7 +78,7 @@ Manage API key and default settings.
 ### `version`
 
 ```bash
-desearch version
+desearch-cli version
 ```
 
 Show version information.
@@ -106,7 +106,7 @@ Show version information.
 | `--api-key string` | Set API key (get at https://console.desearch.ai) |
 | `--default-tool strings` | Set default sources (can be specified multiple times) |
 | `--default-date-filter string` | Set default date filter |
-| `--show` | Display current configuration (alias: `desearch config show`) |
+| `--show` | Display current configuration (alias: `desearch-cli config show`) |
 | `--clear` | Reset configuration to defaults |
 
 ## Examples
@@ -114,71 +114,71 @@ Show version information.
 ### Search with specific sources
 
 ```bash
-desearch "llm benchmarks" --tool web --tool hackernews
-desearch "rust vs go performance" --tool reddit --tool youtube
+desearch-cli "llm benchmarks" --tool web --tool hackernews
+desearch-cli "rust vs go performance" --tool reddit --tool youtube
 ```
 
 ### Date filtering
 
 ```bash
-desearch "AI news" --date-filter PAST_2_DAYS
-desearch "golang updates" --start-date 2026-01-01T00:00:00Z --end-date 2026-03-01T00:00:00Z
+desearch-cli "AI news" --date-filter PAST_2_DAYS
+desearch-cli "golang updates" --start-date 2026-01-01T00:00:00Z --end-date 2026-03-01T00:00:00Z
 ```
 
 ### Limit results
 
 ```bash
-desearch "react patterns" --tool web --count 20
+desearch-cli "react patterns" --tool web --count 20
 ```
 
 ### Custom system message
 
 ```bash
-desearch "explain quantum computing" --system-message "Summarize in simple terms for a non-technical audience"
+desearch-cli "explain quantum computing" --system-message "Summarize in simple terms for a non-technical audience"
 ```
 
 ### Streaming output
 
 ```bash
-desearch "latest AI research" --streaming
+desearch-cli "latest AI research" --streaming
 ```
 
 ### AI completion only (no per-source results)
 
 ```bash
-desearch completion "what is bittensor"
-desearch completion "explain transformers" --system-message "Summarize in simple terms"
+desearch-cli completion "what is bittensor"
+desearch-cli completion "explain transformers" --system-message "Summarize in simple terms"
 ```
 
 ### JSON output
 
 ```bash
-desearch "golangci-lint" --json | jq '.search[0].title'
-desearch "linux kernel news" --tool hackernews --json
+desearch-cli "golangci-lint" --json | jq '.search[0].title'
+desearch-cli "linux kernel news" --tool hackernews --json
 ```
 
 ### Skip AI summary
 
 ```bash
-desearch "hacker news top posts" --no-ai
+desearch-cli "hacker news top posts" --no-ai
 ```
 
 ### Set defaults
 
 ```bash
-desearch config --api-key sk-xxxx --default-tool web --default-date-filter PAST_WEEK
+desearch-cli config --api-key sk-xxxx --default-tool web --default-date-filter PAST_WEEK
 ```
 
 ### View current config
 
 ```bash
-desearch config show
+desearch-cli config show
 ```
 
 ### Clear config
 
 ```bash
-desearch config clear
+desearch-cli config clear
 ```
 
 ## Configuration File

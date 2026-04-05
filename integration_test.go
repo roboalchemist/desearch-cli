@@ -35,7 +35,7 @@ func buildBinary(t *testing.T) string {
 
 	// Build the binary to a temp location
 	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "desearch")
+	binaryPath := filepath.Join(tmpDir, "desearch-cli")
 
 	cmd := exec.Command("go", "build",
 		"-ldflags", "-X github.com/roboalchemist/desearch-cli/cmd.version=test",

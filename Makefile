@@ -15,15 +15,15 @@ lint:
 	@PATH="$(shell go env GOPATH)/bin:$(PATH)" golangci-lint run
 
 build:
-	go build -ldflags "-X github.com/roboalchemist/desearch-cli/cmd.version=$(VERSION)" -o desearch .
+	go build -ldflags "-X github.com/roboalchemist/desearch-cli/cmd.version=$(VERSION)" -o desearch-cli .
 
 test: build
-	./desearch --help
-	./desearch version
-	./desearch docs > /dev/null
-	./desearch skill print > /dev/null
-	./desearch completion --help
-	./desearch config --help
+	./desearch-cli --help
+	./desearch-cli version
+	./desearch-cli docs > /dev/null
+	./desearch-cli skill print > /dev/null
+	./desearch-cli completion --help
+	./desearch-cli config --help
 
 test-unit:
 	go test -race -coverprofile=coverage.out ./...
@@ -46,12 +46,12 @@ man:
 	go run ./cmd/gendocs
 
 install:
-	sudo install -m 755 desearch /usr/local/bin/
+	sudo install -m 755 desearch-cli /usr/local/bin/
 
 check: fmt lint test test-unit
 
 clean:
-	rm -f desearch coverage.out
+	rm -f desearch-cli coverage.out
 	rm -rf dist/
 
 help:

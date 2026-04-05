@@ -5,7 +5,7 @@ version: 2
 builds:
   - id: desearch-cli
     main: .
-    binary: desearch
+    binary: desearch-cli
     env:
       - CGO_ENABLED=0
     goos:
@@ -46,4 +46,4 @@ brews:
     folder: Formula
     name: desearch-cli
     install: |
-      bin.install "desearch"
+      bin.install "desearch-cli"
