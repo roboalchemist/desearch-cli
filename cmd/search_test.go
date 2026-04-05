@@ -1154,3 +1154,56 @@ func TestRunSearch_JQWithoutJSONNoAIDryRunErrors(t *testing.T) {
 		t.Errorf("unexpected error = %q", errMsg)
 	}
 }
+
+// TestSearchCmd_NoHistoryFlagExists verifies the --no-history flag is registered
+// on the search command and does not cause flag parsing errors.
+func TestSearchCmd_NoHistoryFlagExists(t *testing.T) {
+	f := searchCmd.Flags().Lookup("no-history")
+	if f == nil {
+		t.Fatal("expected --no-history flag to be registered on searchCmd")
+	}
+	if f.DefValue != "false" {
+		t.Errorf("--no-history default = %q, want %q", f.DefValue, "false")
+	}
+}
+
+// TestRunSearch_DryRunDoesNotWriteHistory verifies that a dry-run exits before
+// any history write occurs even when history_enabled=true is in the config.
+func TestRunSearch_DryRunDoesNotWriteHistory(t *testing.T) {
+	tmpDir := t.TempDir()
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Cleanup(func() {
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		} else {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		}
+		resetFlags()
+	})
+
+	// Write a config with history_enabled=true so the code would write history
+	// if it reached that code path.
+	cfgDir := tmpDir + "/desearch-cli"
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgDir+"/config.toml", []byte("history_enabled = true\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	resetFlags()
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"dry run query"})
+	if err != nil {
+		t.Fatalf("runSearch with --dry-run failed: %v", err)
+	}
+
+	// Dry-run exits before calling the API or writing history.
+	historyDir := cfgDir + "/history"
+	if _, statErr := os.Stat(historyDir); !os.IsNotExist(statErr) {
+		t.Errorf("history directory should NOT exist for dry-run, but found: %s", historyDir)
+	}
+}
