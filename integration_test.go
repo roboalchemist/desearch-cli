@@ -424,7 +424,7 @@ func TestIntegration_StartEndDate(t *testing.T) {
 		},
 		{
 			name:  "start-date with other flags",
-			flags: []string{"search", "test", "--start-date", "2024-01-01", "--tool", "web", "--count", "5", "--dry-run"},
+			flags: []string{"search", "test", "--start-date", "2024-01-01", "--tool", "web", "--count", "10", "--dry-run"},
 		},
 	}
 
