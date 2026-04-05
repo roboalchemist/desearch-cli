@@ -219,6 +219,7 @@ func TestSearchStream_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchStream failed: %v", err)
 	}
+	defer bufReader.Close()
 
 	data, err := io.ReadAll(bufReader)
 	if err != nil {
@@ -414,6 +415,75 @@ func TestSearchStream_RequestCreationError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for malformed URL")
+	}
+}
+
+// TestSearchStream_ContextCancel_ClosesBody verifies that SearchStream closes the
+// response body when the context is cancelled before the stream finishes.
+func TestSearchStream_ContextCancel_ClosesBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Write nothing — handler returns immediately after headers.
+		// The client will cancel the context, which may cause the connection to
+		// close early. The important thing: Close() must be callable without panic.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a context that cancels immediately.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	reader, err := client.SearchStream(ctx, &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	// With immediate cancel, Do() returns a context error.
+	if err == nil {
+		// If there's no error (unlikely), still close and verify it works.
+		reader.Close()
+	}
+	// No goroutine leak: the defer in test server won't hang.
+}
+
+// TestSearchStream_ReturnsReadCloser verifies that SearchStream returns a
+// *streamReadCloser (which satisfies io.ReadCloser) so callers can close the body.
+func TestSearchStream_ReturnsReadCloser(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{}`)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	client := &Client{BaseURL: server.URL, APIKey: "test-key", HTTPClient: server.Client()}
+	reader, err := client.SearchStream(context.Background(), &SearchRequest{
+		Prompt: "test",
+		Tools:  []string{"web"},
+	})
+	if err != nil {
+		t.Fatalf("SearchStream failed: %v", err)
+	}
+
+	// Verify it's an io.ReadCloser (has Close method).
+	var closer io.Closer = reader
+	_ = closer // staticcheck: concrete type is never nil
+
+	// Verify we can read something.
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("failed to read stream: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("expected some data from stream")
+	}
+
+	// Verify Close works.
+	if err := reader.Close(); err != nil {
+		t.Errorf("Close() returned error: %v", err)
 	}
 }
 

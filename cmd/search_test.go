@@ -783,7 +783,8 @@ func TestRunSearch_StdinMode(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	_, _ = buf.ReadFrom(rOut)
+	//nolint:errcheck // bytes.Buffer.ReadFrom never returns error
+	buf.ReadFrom(rOut)
 	output := buf.String()
 
 	if !strings.Contains(output, "query one") {

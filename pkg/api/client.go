@@ -381,8 +381,19 @@ func (c *Client) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 	return &searchResp, nil
 }
 
-// SearchStream performs a streaming search request and returns a bufio.Reader for the response body.
-func (c *Client) SearchStream(ctx context.Context, req *SearchRequest) (*bufio.Reader, error) {
+// streamReadCloser wraps a bufio.Reader over an HTTP response body, exposing
+// Close() so callers can release the underlying TCP connection.
+// It implements io.ReadCloser (and embeds *bufio.Reader so ReadBytes is available).
+type streamReadCloser struct {
+	*bufio.Reader
+	io.Closer
+}
+
+func (s *streamReadCloser) Close() error { return s.Closer.Close() }
+
+// SearchStream performs a streaming search request and returns an *streamReadCloser
+// (which satisfies io.ReadCloser). The caller MUST close the returned ReadCloser when done.
+func (c *Client) SearchStream(ctx context.Context, req *SearchRequest) (*streamReadCloser, error) {
 	// Ensure streaming is enabled
 	streaming := true
 	req.Streaming = &streaming
@@ -416,5 +427,5 @@ func (c *Client) SearchStream(ctx context.Context, req *SearchRequest) (*bufio.R
 		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	return bufio.NewReader(resp.Body), nil
+	return &streamReadCloser{bufio.NewReader(resp.Body), resp.Body}, nil
 }
