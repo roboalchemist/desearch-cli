@@ -221,3 +221,10 @@ Commands:
 - **Streaming (search --streaming)**: reads `streamReadCloser` line-by-line, splits on `"data: "` boundaries, delegates to `output.ParseSSEEvent()` for each segment, writes via `StreamingFormatter.WriteChunk`.
 - **Streaming (ai cmd)**: same SSE parsing as search streaming; handles Ctrl+C via `context.WithCancel` + signal goroutine; `--json` mode accumulates text then outputs JSON at end.
 - **`--jq` validation**: requires `--json`, `--no-ai`, or `--dry-run` (all produce JSON). `--fields` requires `--json` or `--dry-run`.
+
+## Local QA Agent
+
+Project QA agent: `.claude/agents/dc1-qa.md`
+Used automatically by `/trckr:plow` when plowing this project. Do NOT use `trckr-web-qa` or generic `trckr-cli-qa` — dc1-qa knows the project-specific traps.
+
+Project rules: `.claude/rules/` — `dc1-repeat-mistakes.md`, `auth-bypass-isnoauthcommand.md`, `integration-test-hardcoded-values.md`
