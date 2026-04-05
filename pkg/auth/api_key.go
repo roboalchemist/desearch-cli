@@ -81,6 +81,21 @@ func SaveConfig(c *Config) error {
 	return nil
 }
 
+// ConfigDir returns the XDG-compliant config directory for desearch-cli.
+// This is the parent directory that contains config.toml and the history/
+// subdirectory.
+func ConfigDir() (string, error) {
+	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
+	if xdgConfigHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("could not determine home directory: %w", err)
+		}
+		xdgConfigHome = filepath.Join(home, ".config")
+	}
+	return filepath.Join(xdgConfigHome, "desearch-cli"), nil
+}
+
 // GetAPIKey returns the API key from the environment or config file.
 // Environment variable DESEARCH_API_KEY takes precedence over config file.
 // Returns an empty string if the key cannot be loaded.

@@ -37,6 +37,7 @@ func resetFlags() {
 	flagJQ = ""
 	flagFields = ""
 	flagStdin = false
+	flagNoHistory = false
 	jsonOut = false
 }
 
@@ -509,6 +510,109 @@ func TestRunSearch_DryRun(t *testing.T) {
 	// Dry-run should output JSON
 	if !strings.Contains(output, "\"prompt\"") {
 		t.Errorf("dry-run output should contain JSON with prompt, got: %s", output)
+	}
+}
+
+func TestRunSearchNormal_NoHistory(t *testing.T) {
+	// With history_enabled=true in config but --no-history flag set, no history
+	// file should be written.
+	tmpDir := t.TempDir()
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Cleanup(func() {
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		} else {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		}
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
+			Completion: "test",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	flagNoHistory = true // --no-history is set
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test query", Tools: []string{"web"}}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal with --no-history failed: %v", err)
+	}
+
+	// No history directory should exist because --no-history suppresses writing
+	historyDir := tmpDir + "/desearch-cli/history"
+	if _, err := os.Stat(historyDir); !os.IsNotExist(err) {
+		t.Errorf("history directory should not exist when --no-history is set, but got: %v", err)
+	}
+}
+
+func TestRunSearchNormal_HistoryEnabled(t *testing.T) {
+	// With history_enabled=true in config and no --no-history flag, a history
+	// file should be written after a successful search.
+	tmpDir := t.TempDir()
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Cleanup(func() {
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		} else {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		}
+	})
+
+	// Write a config with history_enabled = true
+	cfgDir := tmpDir + "/desearch-cli"
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgDir+"/config.toml", []byte("history_enabled = true\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(api.SearchResponse{
+			Completion: "test",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	// flagNoHistory is false (default)
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test query", Tools: []string{"web"}}
+
+	err := runSearchNormal(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchNormal with history_enabled failed: %v", err)
+	}
+
+	// History directory should exist because history_enabled=true
+	historyDir := tmpDir + "/desearch-cli/history/search"
+	if _, err := os.Stat(historyDir); os.IsNotExist(err) {
+		t.Errorf("history directory should exist when history_enabled=true, but not found at %s", historyDir)
 	}
 }
 
