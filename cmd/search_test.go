@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -269,8 +270,8 @@ func TestRunSearch_JQWithoutJSON_Error(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for --jq without --json, --no-ai, or --dry-run")
 	}
-	if !strings.Contains(err.Error(), "--jq requires --json or --no-ai to be set") {
-		t.Errorf("error should mention '--jq requires --json or --no-ai to be set', got: %v", err)
+	if !strings.Contains(err.Error(), "--dry-run") {
+		t.Errorf("error should mention '--dry-run', got: %v", err)
 	}
 }
 
@@ -783,8 +784,9 @@ func TestRunSearch_StdinMode(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	//nolint:errcheck // bytes.Buffer.ReadFrom never returns error
-	buf.ReadFrom(rOut)
+	if _, err := buf.ReadFrom(rOut); err != nil {
+		t.Fatalf("failed to read stdout: %v", err)
+	}
 	output := buf.String()
 
 	if !strings.Contains(output, "query one") {
@@ -843,5 +845,154 @@ func TestRunSearch_ClientSearchError(t *testing.T) {
 	err := runSearchNormal(cmd, client, req)
 	if err == nil {
 		t.Error("expected error when API returns 500")
+	}
+}
+
+func TestRunSearch_CountBelowMin(t *testing.T) {
+	resetFlags()
+	flagCount = 5
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err == nil {
+		t.Error("expected error for --count below minimum")
+	}
+	if !strings.Contains(err.Error(), "--count must be between 10 and 200") {
+		t.Errorf("error = %q, want containing %q", err.Error(), "--count must be between 10 and 200")
+	}
+}
+
+func TestRunSearch_CountAboveMax(t *testing.T) {
+	resetFlags()
+	flagCount = 201
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err == nil {
+		t.Error("expected error for --count above maximum")
+	}
+	if !strings.Contains(err.Error(), "--count must be between 10 and 200") {
+		t.Errorf("error = %q, want containing %q", err.Error(), "--count must be between 10 and 200")
+	}
+}
+
+func TestRunSearch_CountBoundaryValid(t *testing.T) {
+	for _, count := range []int{10, 200} {
+		t.Run(fmt.Sprintf("count_%d", count), func(t *testing.T) {
+			resetFlags()
+			flagCount = count
+			flagDryRun = true
+
+			cmd := &cobra.Command{}
+			err := runSearch(cmd, []string{"test query"})
+			if err != nil {
+				t.Errorf("expected no error for valid --count %d, got: %v", count, err)
+			}
+		})
+	}
+}
+
+func TestRunSearch_InvalidDateFilter(t *testing.T) {
+	resetFlags()
+	flagDateFilter = "INVALID_FILTER"
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err == nil {
+		t.Error("expected error for invalid --date-filter")
+	}
+	if !strings.Contains(err.Error(), "--date-filter") {
+		t.Errorf("error = %q, want containing %q", err.Error(), "--date-filter")
+	}
+}
+
+func TestRunSearch_ValidDateFilter(t *testing.T) {
+	for _, df := range []string{"PAST_24_HOURS", "PAST_2_DAYS", "PAST_WEEK", "PAST_2_WEEKS", "PAST_MONTH", "PAST_2_MONTHS", "PAST_YEAR", "PAST_2_YEARS"} {
+		t.Run(df, func(t *testing.T) {
+			resetFlags()
+			flagDateFilter = df
+			flagDryRun = true
+
+			cmd := &cobra.Command{}
+			err := runSearch(cmd, []string{"test query"})
+			if err != nil {
+				t.Errorf("expected no error for valid --date-filter %q, got: %v", df, err)
+			}
+		})
+	}
+}
+
+func TestRunSearch_InvalidStartDate(t *testing.T) {
+	resetFlags()
+	flagStartDate = "not-a-date"
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err == nil {
+		t.Error("expected error for invalid --start-date")
+	}
+	if !strings.Contains(err.Error(), "--start-date must be YYYY-MM-DD") {
+		t.Errorf("error = %q, want containing %q", err.Error(), "--start-date must be YYYY-MM-DD")
+	}
+}
+
+func TestRunSearch_InvalidEndDate(t *testing.T) {
+	resetFlags()
+	flagEndDate = "2024/01/01"
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err == nil {
+		t.Error("expected error for invalid --end-date")
+	}
+	if !strings.Contains(err.Error(), "--end-date must be YYYY-MM-DD") {
+		t.Errorf("error = %q, want containing %q", err.Error(), "--end-date must be YYYY-MM-DD")
+	}
+}
+
+func TestRunSearch_JQWithDryRunNoError(t *testing.T) {
+	resetFlags()
+	flagJQ = ".foo"
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err != nil {
+		t.Errorf("expected no error for --jq with --dry-run, got: %v", err)
+	}
+}
+
+func TestRunSearch_JQWithoutJSONNoAIDryRunErrors(t *testing.T) {
+	resetFlags()
+	flagJQ = ".foo"
+	// jsonOut, flagNoAI, flagDryRun are all false (default).
+	// Isolate from real config by redirecting XDG_CONFIG_HOME to a temp dir.
+	origEnv := os.Getenv("DESEARCH_API_KEY")
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	tmpDir := t.TempDir()
+	os.Unsetenv("DESEARCH_API_KEY")
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Cleanup(func() {
+		os.Unsetenv("XDG_CONFIG_HOME")
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		}
+		if origEnv != "" {
+			os.Setenv("DESEARCH_API_KEY", origEnv)
+		}
+	})
+
+	cmd := &cobra.Command{}
+	err := runSearch(cmd, []string{"test query"})
+	if err == nil {
+		t.Error("expected error for --jq without --json, --no-ai, or --dry-run")
+	}
+	if !strings.Contains(err.Error(), "--dry-run") {
+		t.Errorf("error = %q, want containing %q", err.Error(), "--dry-run")
 	}
 }

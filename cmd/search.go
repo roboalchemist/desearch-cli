@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/roboalchemist/desearch-cli/pkg/api"
 	"github.com/roboalchemist/desearch-cli/pkg/auth"
@@ -72,13 +73,47 @@ func buildSearchRequest(query string, cfg *auth.Config) *api.SearchRequest {
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
+	// Validate --count range (10-200)
+	if flagCount != 0 && (flagCount < 10 || flagCount > 200) {
+		return fmt.Errorf("--count must be between 10 and 200, got %d", flagCount)
+	}
+
+	// Validate --date-filter enum
+	validDateFilters := map[string]bool{
+		"PAST_24_HOURS": true,
+		"PAST_2_DAYS":   true,
+		"PAST_WEEK":     true,
+		"PAST_2_WEEKS":  true,
+		"PAST_MONTH":    true,
+		"PAST_2_MONTHS": true,
+		"PAST_YEAR":     true,
+		"PAST_2_YEARS":  true,
+	}
+	if flagDateFilter != "" && !validDateFilters[flagDateFilter] {
+		return fmt.Errorf("--date-filter %q is not valid; valid values: PAST_24_HOURS, PAST_2_DAYS, PAST_WEEK, PAST_2_WEEKS, PAST_MONTH, PAST_2_MONTHS, PAST_YEAR, PAST_2_YEARS", flagDateFilter)
+	}
+
+	// Validate --start-date format
+	if flagStartDate != "" {
+		if _, err := time.Parse("2006-01-02", flagStartDate); err != nil {
+			return fmt.Errorf("--start-date must be YYYY-MM-DD, got %q", flagStartDate)
+		}
+	}
+
+	// Validate --end-date format
+	if flagEndDate != "" {
+		if _, err := time.Parse("2006-01-02", flagEndDate); err != nil {
+			return fmt.Errorf("--end-date must be YYYY-MM-DD, got %q", flagEndDate)
+		}
+	}
+
 	// Validate --fields cannot be used with --dry-run (no response to filter)
 	if flagFields != "" && flagDryRun {
 		return fmt.Errorf("--fields cannot be used with --dry-run")
 	}
 	// Validate --jq requires --json or --no-ai (--dry-run always outputs JSON so it's also allowed)
 	if flagJQ != "" && !jsonOut && !flagNoAI && !flagDryRun {
-		return fmt.Errorf("--jq requires --json or --no-ai to be set")
+		return fmt.Errorf("--jq requires --json, --no-ai, or --dry-run to be set")
 	}
 	// Validate --fields requires --json
 	if flagFields != "" && !jsonOut {
@@ -232,8 +267,8 @@ returned as a complete response with AI summarization.`,
 func init() {
 	searchCmd.Flags().StringSliceVar(&flagTool, "tool", nil, "Sources to query (web, hackernews, reddit, wikipedia, youtube, twitter, arxiv). Empty queries all.")
 	searchCmd.Flags().StringVar(&flagDateFilter, "date-filter", "", "Predefined date range (PAST_24_HOURS, PAST_2_DAYS, PAST_WEEK, PAST_2_WEEKS, PAST_MONTH, PAST_2_MONTHS, PAST_YEAR, PAST_2_YEARS)")
-	searchCmd.Flags().StringVar(&flagStartDate, "start-date", "", "Start date in ISO8601 UTC format")
-	searchCmd.Flags().StringVar(&flagEndDate, "end-date", "", "End date in ISO8601 UTC format")
+	searchCmd.Flags().StringVar(&flagStartDate, "start-date", "", "Start date in YYYY-MM-DD format")
+	searchCmd.Flags().StringVar(&flagEndDate, "end-date", "", "End date in YYYY-MM-DD format")
 	searchCmd.Flags().BoolVar(&flagStreaming, "streaming", false, "Stream results as they arrive")
 	searchCmd.Flags().StringVar(&flagResultType, "result-type", "", "Result type: ONLY_LINKS or LINKS_WITH_FINAL_SUMMARY (default LINKS_WITH_FINAL_SUMMARY)")
 	searchCmd.Flags().IntVar(&flagCount, "count", 0, "Number of results per source (10-200)")
