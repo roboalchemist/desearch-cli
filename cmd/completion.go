@@ -107,12 +107,15 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// API key is already populated by PersistentPreRun in root.go
-	// but we inline-check for consistent error messages (same as search.go)
-	if apiKey == "" {
+	// Resolve API key: flag → env var → config file (mirrors search.go getAPIKey())
+	key := apiKey
+	if key == "" {
+		key = auth.GetAPIKey()
+	}
+	if key == "" {
 		return fmt.Errorf("no API key found")
 	}
-	client := api.NewClient(apiKey)
+	client := api.NewClient(key)
 
 	cfg, _ := auth.LoadConfig()
 
