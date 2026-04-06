@@ -106,15 +106,18 @@ desearch-cli ai "explain transformers" --system-message "Summarize in simple ter
 
 ### History Logging
 
-Results can be saved locally to `~/.config/desearch-cli/history/`:
+**Disabled by default.** Must be explicitly enabled:
 
 ```bash
-# Enable history logging
+# Enable history logging (off by default)
 desearch-cli config --history-enabled=true
 
-# Suppress history for a single invocation
+# Suppress for a single invocation even when enabled
 desearch-cli search "my query" --no-history
 desearch-cli ai "my query" --no-history
+
+# Disable again
+desearch-cli config --history-enabled=false
 ```
 
 History files are written as JSON envelopes at:
