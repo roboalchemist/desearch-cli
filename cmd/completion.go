@@ -146,14 +146,15 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 
 	// processSSESegment delegates to the shared output.ParseSSEEvent helper,
 	// writing via the streamer or accumulating the completion text.
+	// completionBuilder always accumulates the full text for history; in --json
+	// mode it is also used for the final JSON output instead of streaming chunks.
 	processSSESegment := func(seg []byte) {
 		content := output.ParseSSEEvent(seg)
 		if content == "" {
 			return
 		}
-		if completionJSON {
-			completionBuilder.WriteString(content)
-		} else {
+		completionBuilder.WriteString(content)
+		if !completionJSON {
 			streamer.WriteChunk(content)
 		}
 	}
@@ -209,8 +210,9 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		}
 		cfg, _ := auth.LoadConfig()
 		historyEnabled := cfg != nil && cfg.HistoryEnabled && !completionNoHistory
-		// ai cmd streams only the completion text; pass nil for the response envelope.
-		if histErr := output.WriteHistory(configDir, "ai", params, nil, latencyMs, historyEnabled); histErr != nil {
+		// ai cmd streams the completion text; save the accumulated text as the response.
+		aiResponse := map[string]interface{}{"completion": completionBuilder.String()}
+		if histErr := output.WriteHistory(configDir, "ai", params, aiResponse, latencyMs, historyEnabled); histErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to write history: %v\n", histErr)
 		}
 	}
