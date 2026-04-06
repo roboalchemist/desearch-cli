@@ -115,13 +115,14 @@ func TestWriteHistory_NoOp(t *testing.T) {
 }
 
 // TestWriteHistory_AICommand verifies that cmd="ai" produces the correct
-// directory structure.
+// directory structure and saves accumulated completion text.
 func TestWriteHistory_AICommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	params := map[string]interface{}{"prompt": "explain recursion"}
-	resp := makeTestResponse()
+	// ai command passes a map with the accumulated streamed text
+	aiResponse := map[string]interface{}{"completion": "Recursion is when a function calls itself."}
 
-	err := WriteHistory(tmpDir, "ai", params, resp, 800, true)
+	err := WriteHistory(tmpDir, "ai", params, aiResponse, 800, true)
 	require.NoError(t, err)
 
 	var files []string
@@ -139,6 +140,19 @@ func TestWriteHistory_AICommand(t *testing.T) {
 
 	// The path must contain "ai" as the command segment.
 	assert.Contains(t, files[0], filepath.Join("history", "ai"))
+
+	// The response must contain the accumulated completion text.
+	data, err := os.ReadFile(files[0])
+	require.NoError(t, err)
+
+	var envelope map[string]interface{}
+	err = json.Unmarshal(data, &envelope)
+	require.NoError(t, err)
+
+	response, ok := envelope["response"].(map[string]interface{})
+	require.True(t, ok, "response must be a JSON object for ai command")
+	assert.Equal(t, "Recursion is when a function calls itself.", response["completion"],
+		"completion field must contain accumulated streamed text")
 }
 
 // TestWriteHistory_APIKeyStripped verifies that api_key is removed from params.

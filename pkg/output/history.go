@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/roboalchemist/desearch-cli/pkg/api"
 )
 
 // historyMeta holds metadata written to the top-level "meta" envelope in each
@@ -23,8 +21,8 @@ type historyMeta struct {
 
 // historyEnvelope is the top-level JSON structure written to each history file.
 type historyEnvelope struct {
-	Meta     historyMeta         `json:"meta"`
-	Response *api.SearchResponse `json:"response"`
+	Meta     historyMeta `json:"meta"`
+	Response interface{} `json:"response"`
 }
 
 // slugRe matches any character that is NOT alphanumeric. Replaced with "-".
@@ -57,7 +55,7 @@ func makeSlug(params map[string]interface{}) string {
 // "response" block with the full API response. The file is written with mode
 // 0600. On error, a warning is printed to stderr (the caller's command is NOT
 // failed).
-func WriteHistory(configDir string, cmd string, params map[string]interface{}, response *api.SearchResponse, latencyMs int, historyEnabled bool) error {
+func WriteHistory(configDir string, cmd string, params map[string]interface{}, response interface{}, latencyMs int, historyEnabled bool) error {
 	if !historyEnabled {
 		return nil
 	}
