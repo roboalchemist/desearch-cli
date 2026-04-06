@@ -106,7 +106,7 @@ desearch-cli ai "explain transformers" --system-message "Summarize in simple ter
 
 ### History Logging
 
-**Disabled by default.** Must be explicitly enabled:
+**Disabled by default.** Must be explicitly enabled. Useful for building a personal search corpus or mining agent query patterns over time.
 
 ```bash
 # Enable history logging (off by default)
