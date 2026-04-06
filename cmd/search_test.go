@@ -782,6 +782,126 @@ func TestRunSearchStream_ClientError(t *testing.T) {
 	}
 }
 
+// TestRunSearchStream_HistoryEnabled verifies that when history is enabled,
+// runSearchStream writes a history file with response.completion set to the
+// accumulated SSE text (not null). This is the DC1-119 fix.
+func TestRunSearchStream_HistoryEnabled(t *testing.T) {
+	tmpDir := t.TempDir()
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Cleanup(func() {
+		if origXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", origXDG)
+		} else {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		}
+	})
+
+	// Write a config with history_enabled = true
+	cfgDir := tmpDir + "/desearch-cli"
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgDir+"/config.toml", []byte("history_enabled = true\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Send two SSE text chunks followed by [DONE]
+		if _, err := w.Write([]byte(`data: {"type":"text","content":"Hello "}` + "\n")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(`data: {"type":"text","content":"world"}` + "\n")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(`data: [DONE]` + "\n")); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	client := api.NewClient("test-key")
+	client.BaseURL = server.URL
+	client.HTTPClient = server.Client()
+
+	resetFlags()
+	// flagNoHistory is false (default) — history will be written
+
+	cmd := &cobra.Command{}
+	req := &api.SearchRequest{Prompt: "test query", Tools: []string{"web"}}
+
+	err := runSearchStream(cmd, client, req)
+	if err != nil {
+		t.Fatalf("runSearchStream failed: %v", err)
+	}
+
+	// Verify the history directory exists
+	historyDir := cfgDir + "/history/search"
+	entries, readErr := os.ReadDir(historyDir)
+	if readErr != nil {
+		t.Fatalf("history directory not created at %s: %v", historyDir, readErr)
+	}
+
+	// Walk down to find the actual JSON file (nested under YYYY/MM/DD)
+	var historyFile string
+	var walkDir func(string) bool
+	walkDir = func(dir string) bool {
+		items, err := os.ReadDir(dir)
+		if err != nil {
+			return false
+		}
+		for _, item := range items {
+			path := dir + "/" + item.Name()
+			if item.IsDir() {
+				if walkDir(path) {
+					return true
+				}
+			} else if strings.HasSuffix(item.Name(), ".json") {
+				historyFile = path
+				return true
+			}
+		}
+		return false
+	}
+	for _, e := range entries {
+		if walkDir(historyDir + "/" + e.Name()) {
+			break
+		}
+	}
+
+	if historyFile == "" {
+		t.Fatal("no history JSON file found under history/search/")
+	}
+
+	data, err := os.ReadFile(historyFile)
+	if err != nil {
+		t.Fatalf("reading history file: %v", err)
+	}
+
+	// Parse the envelope and check response.completion is non-null and correct
+	var envelope struct {
+		Response struct {
+			Completion interface{} `json:"completion"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		t.Fatalf("unmarshaling history file: %v\nraw: %s", err, string(data))
+	}
+
+	if envelope.Response.Completion == nil {
+		t.Errorf("response.completion is null — expected accumulated SSE text\nraw: %s", string(data))
+	}
+
+	completion, ok := envelope.Response.Completion.(string)
+	if !ok {
+		t.Errorf("response.completion is not a string, got %T\nraw: %s", envelope.Response.Completion, string(data))
+	} else if completion != "Hello world" {
+		t.Errorf("response.completion = %q, want %q\nraw: %s", completion, "Hello world", string(data))
+	}
+}
+
 func TestSearchCmd_WithAllFlags(t *testing.T) {
 	resetFlags()
 	flagTool = []string{"web", "hackernews"}

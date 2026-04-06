@@ -274,6 +274,10 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 
 	streamer := &output.StreamingFormatter{JSON: jsonOut}
 
+	// Accumulate SSE text chunks for history (mirrors how runCompletion does it
+	// for the ai command — DC1-118 pattern).
+	var buf strings.Builder
+
 	// Read line-by-line using ReadBytes; split each line on "data: " boundaries
 	// to handle multiple SSE events packed on a single line.
 	for {
@@ -283,6 +287,7 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 			for _, seg := range segments {
 				content := output.ParseSSEEvent(seg)
 				if content != "" {
+					buf.WriteString(content)
 					streamer.WriteChunk(content)
 				}
 			}
@@ -323,8 +328,10 @@ func runSearchStream(cmd *cobra.Command, client *api.Client, req *api.SearchRequ
 			params["count"] = *req.Count
 		}
 		historyEnabled := cfg != nil && cfg.HistoryEnabled && !flagNoHistory
-		// Streaming responses don't have a structured response object; pass nil.
-		if histErr := output.WriteHistory(configDir, "search", params, nil, latencyMs, historyEnabled); histErr != nil {
+		// Accumulate the streamed text chunks into the response so history
+		// files contain the actual completion instead of null (DC1-119).
+		streamResponse := map[string]interface{}{"completion": buf.String()}
+		if histErr := output.WriteHistory(configDir, "search", params, streamResponse, latencyMs, historyEnabled); histErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to write history: %v\n", histErr)
 		}
 	}
